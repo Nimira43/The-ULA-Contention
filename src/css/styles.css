@@ -6,6 +6,7 @@
   --main-light: #81f681;
   --dark: #000;
   --light: #fff;
+  --danger: #ff3b3b;
 }
 
 * {
@@ -18,11 +19,10 @@ body {
   width: 100%;
   height: 100vh;
   background: var(--dark);
-  color: var(--main)
-}
-
-.temp-container {
-  padding: 100px;
+  color: var(--main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .logo-font {
@@ -33,6 +33,69 @@ body {
 }
 
 .main-font {
-  font-family: 'IBM Plex Mono', monospace
+  font-family: 'IBM Plex Mono', monospace;
 }
 
+.game-frame {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+  border: 4px solid var(--main);
+  padding: 24px;
+  background: var(--dark);
+}
+
+.game-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#game-canvas {
+  border: 2px solid var(--main);
+  background: var(--dark);
+}
+
+.hud-sidebar {
+  width: 220px;
+  background: var(--main);
+  color: var(--dark);
+  font-family: 'IBM Plex Mono', monospace;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hud-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.hud-area {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.hud-status-label {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.hud-status {
+  background: var(--dark);
+  color: var(--danger);
+  font-weight: 700;
+  padding: 6px 8px;
+  font-size: 14px;
+}
