@@ -1,7 +1,3 @@
-// Resistor "grunt" enemies. Colour bands are real resistor codes — the lower-value
-// tiers used here (10Ω–330Ω) are deliberately the weakest, so "lower value" grunts
-// are literally lower-value resistors, not just a difficulty label.
-
 const BAND_HEX = {
   black: '#1a1a1a',
   brown: '#7b4a2a',
@@ -27,21 +23,34 @@ export function spawnResistors(rooms, roomKeyFn, count, excludeCol, excludeRow) 
   const enemies = []
   for (let i = 0; i < count; i++) {
     const room = roomList[Math.floor(Math.random() * roomList.length)]
-    const tier = LOW_VALUE_TIERS[Math.floor(Math.random() * LOW_VALUE_TIERS.length)]
-    const angle = Math.random() * Math.PI * 2
-    enemies.push({
-      roomCol: room.col,
-      roomRow: room.row,
-      x: 0.25 + Math.random() * 0.5,
-      y: 0.25 + Math.random() * 0.5,
-      vx: Math.cos(angle) * tier.speed,
-      vy: Math.sin(angle) * tier.speed,
-      hp: tier.hp,
-      bands: tier.bands,
-      ohms: tier.ohms,
-    })
+    enemies.push(makeResistor(room.col, room.row))
   }
   return enemies
+}
+
+export function spawnSwarm(count, roomCol, roomRow) {
+  const enemies = []
+  for (let i = 0; i < count; i++) {
+    enemies.push(makeResistor(roomCol, roomRow))
+  }
+  return enemies
+}
+
+function makeResistor(roomCol, roomRow) {
+  const tier = LOW_VALUE_TIERS[Math.floor(Math.random() * LOW_VALUE_TIERS.length)]
+  const angle = Math.random() * Math.PI * 2
+  return {
+    roomCol,
+    roomRow,
+    x: 0.25 + Math.random() * 0.5,
+    y: 0.25 + Math.random() * 0.5,
+    vx: Math.cos(angle) * tier.speed,
+    vy: Math.sin(angle) * tier.speed,
+    hp: tier.hp,
+    bands: tier.bands,
+    ohms: tier.ohms,
+    attackCooldown: 60 + Math.random() * 60,
+  }
 }
 
 export function updateResistors(enemies) {
@@ -54,10 +63,23 @@ export function updateResistors(enemies) {
     e.x = clamp(e.x, 0.1, 0.9)
     e.y = clamp(e.y, 0.1, 0.9)
 
-    // Occasional nudge so movement isn't a perfectly bouncing ball.
     if (Math.random() < 0.02) {
       e.vx += (Math.random() - 0.5) * 0.003
       e.vy += (Math.random() - 0.5) * 0.003
+    }
+  }
+}
+
+export function updateResistorAttacks(enemies, objective, fireEnemyProjectile, projectiles) {
+  if (!objective || !objective.active) return
+
+  for (const e of enemies) {
+    if (e.roomCol !== objective.roomCol || e.roomRow !== objective.roomRow) continue
+
+    e.attackCooldown -= 1
+    if (e.attackCooldown <= 0) {
+      fireEnemyProjectile(e, objective, projectiles)
+      e.attackCooldown = 90 + Math.random() * 60
     }
   }
 }

@@ -2,9 +2,12 @@ import './css/styles.css'
 import { generateGrid, roomKey } from './game/grid.js'
 import { createPlayer, movePlayer } from './game/player.js'
 import { renderRoom, renderChipProps } from './game/render.js'
-import { spawnResistors, updateResistors, renderResistors } from './game/enemies.js'
-import { fireZap, updateProjectiles, renderProjectiles } from './game/projectiles.js'
-import { LEVELS, HUD_PLACEHOLDER_STATS } from './game/levels.js'
+import { spawnSwarm, updateResistors, updateResistorAttacks, renderResistors } from './game/enemies.js'
+import { fireZap, fireEnemyProjectile, updateProjectiles, renderProjectiles } from './game/projectiles.js'
+import { createObjective, damageObjective, objectiveHealthPercent } from './game/objective.js'
+import { spawnHealthPickups, collectPickups, useHealthPickup, renderPickups } from './game/pickups.js'
+import { spawnGlitchTokens, checkGlitchContact, applyGlitch, renderGlitchTokens } from './game/hazards.js'
+import { LEVELS } from './game/levels.js'
 
 document.querySelector('#app').innerHTML = `
   <div class="game-frame">
@@ -17,6 +20,9 @@ document.querySelector('#app').innerHTML = `
         <div class="hud-row"><span>Lifeforce</span><span id="hud-life"></span></div>
         <div class="hud-row"><span>Laser Regen</span><span id="hud-laser"></span></div>
         <div class="hud-row"><span>Health Pickups</span><span id="hud-pickups"></span></div>
+      </div>
+      <div class="hud-row" id="hud-rom-row" style="display:none">
+        <span>ROM Health</span><span id="hud-rom"></span>
       </div>
       <div class="hud-area">
         <div id="hud-area-num"></div>
@@ -35,57 +41,64 @@ const hud = {
   life: document.querySelector('#hud-life'),
   laser: document.querySelector('#hud-laser'),
   pickups: document.querySelector('#hud-pickups'),
+  romRow: document.querySelector('#hud-rom-row'),
+  rom: document.querySelector('#hud-rom'),
   areaNum: document.querySelector('#hud-area-num'),
   areaName: document.querySelector('#hud-area-name'),
   status: document.querySelector('#hud-status'),
 }
 
+const { rooms, startKey } = generateGrid(5, 4, 9)
+const [startCol, startRow] = startKey.split(',').map(Number)
+const player = createPlayer(startCol, startRow)
+
 let currentLevel = 1
 let resistors = []
 const projectiles = []
+const pickupStockpile = { count: 0 }
+let pickups = []
+let glitchTokens = []
+const status = { glitchTimer: 0 }
+let gameOver = false
+
+let romObjective = createObjective(startCol, startRow, 0.5, 0.22, 100)
+
+function startLevel1Fight() {
+  romObjective = createObjective(startCol, startRow, 0.5, 0.22, 100)
+  resistors = spawnSwarm(5, startCol, startRow)
+  pickups = spawnHealthPickups(3, startCol, startRow)
+  glitchTokens = spawnGlitchTokens(2, startCol, startRow)
+}
 
 function spawnLevelEnemies() {
-  if (currentLevel === 1 || currentLevel === 3) {
-    resistors = spawnResistors(rooms, roomKey, 4, startCol, startRow)
+  if (currentLevel === 1) {
+    startLevel1Fight()
   } else {
     resistors = []
+    pickups = []
+    glitchTokens = []
+    romObjective.active = false
   }
 }
 
 function updateHud() {
   const level = LEVELS[currentLevel]
-  hud.life.textContent = HUD_PLACEHOLDER_STATS.lifeforce
-  hud.laser.textContent = HUD_PLACEHOLDER_STATS.laserRegen
-  hud.pickups.textContent = HUD_PLACEHOLDER_STATS.healthPickups
+  hud.life.textContent = `${Math.round(player.health)}%`
+  hud.laser.textContent = '43%' // placeholder until the energy system exists
+  hud.pickups.textContent = pickupStockpile.count
   hud.areaNum.textContent = `Area ${String(currentLevel).padStart(2, '0')}`
   hud.areaName.textContent = level.areaName
   hud.status.textContent = level.status
+
+  if (romObjective.active) {
+    hud.romRow.style.display = ''
+    hud.rom.textContent = `${objectiveHealthPercent(romObjective)}%`
+  } else {
+    hud.romRow.style.display = 'none'
+  }
 }
 
-window.addEventListener('keydown', (e) => {
-  if (['1', '3', '5'].includes(e.key)) {
-    currentLevel = Number(e.key)
-    updateHud()
-    spawnLevelEnemies()
-  }
-  const dir = keyMap[e.key]
-  if (dir) input[dir] = true
-
-  if (e.key === ' ' && !e.repeat) {
-    fireZap(player, projectiles)
-  }
-})
-
-window.addEventListener('keyup', (e) => {
-  const dir = keyMap[e.key]
-  if (dir) input[dir] = false
-})
-
-const { rooms, startKey } = generateGrid(5, 4, 9)
-const [startCol, startRow] = startKey.split(',').map(Number)
-const player = createPlayer(startCol, startRow)
-
-const input = { up: false, down: false, left: false, right: false }
+const rawInput = { up: false, down: false, left: false, right: false }
 const keyMap = {
   ArrowUp: 'up', w: 'up', W: 'up',
   ArrowDown: 'down', s: 'down', S: 'down',
@@ -93,17 +106,63 @@ const keyMap = {
   ArrowRight: 'right', d: 'right', D: 'right',
 }
 
-updateHud()
+window.addEventListener('keydown', (e) => {
+  if (['1', '3', '5'].includes(e.key)) {
+    currentLevel = Number(e.key)
+    spawnLevelEnemies()
+    updateHud()
+  }
+
+  const dir = keyMap[e.key]
+  if (dir) rawInput[dir] = true
+
+  if (e.key === ' ' && !e.repeat) fireZap(player, projectiles)
+  if (e.key.toLowerCase() === 'h' && !e.repeat) useHealthPickup(pickupStockpile, player)
+})
+window.addEventListener('keyup', (e) => {
+  const dir = keyMap[e.key]
+  if (dir) rawInput[dir] = false
+})
+
 spawnLevelEnemies()
+updateHud()
 
 function loop() {
+  if (gameOver) {
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#ff3b3b'
+    ctx.font = "40px 'VT323', monospace"
+    ctx.textAlign = 'center'
+    ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2)
+    return
+  }
+
+  const input = applyGlitch(status, rawInput)
+
   movePlayer(player, input, rooms, roomKey)
   updateResistors(resistors)
-  updateProjectiles(projectiles, resistors)
+  updateResistorAttacks(resistors, romObjective, fireEnemyProjectile, projectiles)
+  updateProjectiles(projectiles, resistors, romObjective, damageObjective)
+  collectPickups(pickups, player, pickupStockpile)
+  checkGlitchContact(glitchTokens, player, status)
+
+  if (romObjective.active && resistors.length === 0) {
+    romObjective.active = false
+  }
+  if (romObjective.active && romObjective.hp <= 0) {
+    gameOver = true
+  }
+
+  updateHud()
+
   renderRoom(ctx, canvas, rooms, roomKey, player)
   renderChipProps(ctx, canvas, LEVELS[currentLevel].chips)
   renderResistors(ctx, canvas, resistors, player.roomCol, player.roomRow)
   renderProjectiles(ctx, canvas, projectiles, player.roomCol, player.roomRow)
+  renderPickups(ctx, canvas, pickups, player.roomCol, player.roomRow)
+  renderGlitchTokens(ctx, canvas, glitchTokens, player.roomCol, player.roomRow)
+
   requestAnimationFrame(loop)
 }
 

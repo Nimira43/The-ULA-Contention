@@ -10,6 +10,7 @@ export function createPlayer(startCol, startRow) {
     speed: 0.02,
     facingX: 0,
     facingY: 1,
+    health: 100,
   }
 }
 

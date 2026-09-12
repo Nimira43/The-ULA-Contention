@@ -1,6 +1,3 @@
-// Placeholder data for the HUD and in-room chip props.
-// Status/stat text is filler for now — real values come later once systems exist.
-
 export const LEVELS = {
   1: {
     areaName: 'ROM Chamber',
