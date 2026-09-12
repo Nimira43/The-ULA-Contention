@@ -3,6 +3,7 @@ import { generateGrid, roomKey } from './game/grid.js'
 import { createPlayer, movePlayer } from './game/player.js'
 import { renderRoom, renderChipProps } from './game/render.js'
 import { spawnResistors, updateResistors, renderResistors } from './game/enemies.js'
+import { fireZap, updateProjectiles, renderProjectiles } from './game/projectiles.js'
 import { LEVELS, HUD_PLACEHOLDER_STATS } from './game/levels.js'
 
 document.querySelector('#app').innerHTML = `
@@ -39,13 +40,11 @@ const hud = {
   status: document.querySelector('#hud-status'),
 }
 
-// Debug-only for now: press 1, 3, or 5 to preview that level's HUD/chip props.
-// Real level progression will replace this once levels are wired up properly.
 let currentLevel = 1
 let resistors = []
+const projectiles = []
 
 function spawnLevelEnemies() {
-  // Grunts only spawn on levels 1 and 3, per design — level 5 is the CPU mini-boss room.
   if (currentLevel === 1 || currentLevel === 3) {
     resistors = spawnResistors(rooms, roomKey, 4, startCol, startRow)
   } else {
@@ -71,7 +70,12 @@ window.addEventListener('keydown', (e) => {
   }
   const dir = keyMap[e.key]
   if (dir) input[dir] = true
+
+  if (e.key === ' ' && !e.repeat) {
+    fireZap(player, projectiles)
+  }
 })
+
 window.addEventListener('keyup', (e) => {
   const dir = keyMap[e.key]
   if (dir) input[dir] = false
@@ -95,9 +99,11 @@ spawnLevelEnemies()
 function loop() {
   movePlayer(player, input, rooms, roomKey)
   updateResistors(resistors)
+  updateProjectiles(projectiles, resistors)
   renderRoom(ctx, canvas, rooms, roomKey, player)
   renderChipProps(ctx, canvas, LEVELS[currentLevel].chips)
   renderResistors(ctx, canvas, resistors, player.roomCol, player.roomRow)
+  renderProjectiles(ctx, canvas, projectiles, player.roomCol, player.roomRow)
   requestAnimationFrame(loop)
 }
 

@@ -8,6 +8,8 @@ export function createPlayer(startCol, startRow) {
     x: 0.5,
     y: 0.5,
     speed: 0.02,
+    facingX: 0,
+    facingY: 1,
   }
 }
 
@@ -18,6 +20,12 @@ export function movePlayer(player, input, rooms, roomKeyFn) {
   if (input.down) dy += 1
   if (input.left) dx -= 1
   if (input.right) dx += 1
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.hypot(dx, dy)
+    player.facingX = dx / len
+    player.facingY = dy / len
+  }
 
   if (dx !== 0 && dy !== 0) {
     dx *= Math.SQRT1_2
