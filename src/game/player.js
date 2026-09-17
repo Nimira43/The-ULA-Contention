@@ -14,7 +14,7 @@ export function createPlayer(startCol, startRow) {
   }
 }
 
-export function movePlayer(player, input, rooms, roomKeyFn) {
+export function movePlayer(player, input, rooms, roomKeyFn, isDoorBlocked) {
   let dx = 0
   let dy = 0
   if (input.up) dy -= 1
@@ -40,16 +40,18 @@ export function movePlayer(player, input, rooms, roomKeyFn) {
   const doorMin = 0.5 - DOOR_WIDTH / 2
   const doorMax = 0.5 + DOOR_WIDTH / 2
   const inDoorRange = (v) => v > doorMin && v < doorMax
+  const blocked = (dir) =>
+    isDoorBlocked ? isDoorBlocked(player.roomCol, player.roomRow, dir) : false
 
   if (nx < 0) {
-    if (room.doors.W && inDoorRange(ny)) {
+    if (room.doors.W && inDoorRange(ny) && !blocked('W')) {
       player.roomCol -= 1
       nx = 1 - player.speed
     } else {
       nx = 0
     }
   } else if (nx > 1) {
-    if (room.doors.E && inDoorRange(ny)) {
+    if (room.doors.E && inDoorRange(ny) && !blocked('E')) {
       player.roomCol += 1
       nx = player.speed
     } else {
@@ -58,14 +60,14 @@ export function movePlayer(player, input, rooms, roomKeyFn) {
   }
 
   if (ny < 0) {
-    if (room.doors.N && inDoorRange(nx)) {
+    if (room.doors.N && inDoorRange(nx) && !blocked('N')) {
       player.roomRow -= 1
       ny = 1 - player.speed
     } else {
       ny = 0
     }
   } else if (ny > 1) {
-    if (room.doors.S && inDoorRange(nx)) {
+    if (room.doors.S && inDoorRange(nx) && !blocked('S')) {
       player.roomRow += 1
       ny = player.speed
     } else {

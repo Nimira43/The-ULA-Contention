@@ -30,7 +30,7 @@ export function fireEnemyProjectile(source, objective, projectiles) {
   })
 }
 
-export function updateProjectiles(projectiles, enemies, objective, damageObjectiveFn) {
+export function updateProjectiles(projectiles, hittables, objective, damageObjectiveFn) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i]
     p.x += p.vx
@@ -42,9 +42,10 @@ export function updateProjectiles(projectiles, enemies, objective, damageObjecti
     }
 
     if (p.owner === 'player') {
-      const hit = enemies.find(
+      const hit = hittables.find(
         (e) =>
           e.hp > 0 &&
+          !e.invulnerable &&
           e.roomCol === p.roomCol &&
           e.roomRow === p.roomRow &&
           Math.hypot(e.x - p.x, e.y - p.y) < 0.05
@@ -63,10 +64,6 @@ export function updateProjectiles(projectiles, enemies, objective, damageObjecti
         projectiles.splice(i, 1)
       }
     }
-  }
-
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    if (enemies[i].hp <= 0) enemies.splice(i, 1)
   }
 }
 

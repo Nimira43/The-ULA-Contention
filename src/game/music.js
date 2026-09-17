@@ -9,17 +9,15 @@ const TRACKS = [
   '/music/Track08.ogg',
 ]
 
-export function createMusicPlayer(volume = 0.5) {
-  const audio = new Audio()
+export function createMusicPlayer(volume = 0.8 )  {
+  const audio = new Audio()     
   audio.volume = volume
   let index = 0
   let started = false
 
   function playCurrent() {
     audio.src = TRACKS[index]
-    audio.play().catch(() => {
-      // Autoplay blocked until a user gesture — start() gets retried on first input.
-    })
+    audio.play().catch(() => {})
   }
 
   audio.addEventListener('ended', () => {

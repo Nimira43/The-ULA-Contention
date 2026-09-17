@@ -7,6 +7,11 @@ import { fireZap, fireEnemyProjectile, updateProjectiles, renderProjectiles } fr
 import { createObjective, damageObjective, objectiveHealthPercent } from './game/objective.js'
 import { spawnHealthPickups, collectPickups, useHealthPickup, renderPickups } from './game/pickups.js'
 import { spawnGlitchTokens, checkGlitchContact, applyGlitch, renderGlitchTokens } from './game/hazards.js'
+import { spawnLogicGates, updateLogicGates, renderLogicGates } from './game/logicgates.js'
+import { spawnBusJammer, renderBusJammers } from './game/busjammer.js'
+import { spawnCapacitors, repelFromCapacitors, renderCapacitors } from './game/capacitors.js'
+import { createMusicPlayer } from './game/music.js'
+import { playSfx } from './game/sfx.js'
 import { LEVELS } from './game/levels.js'
 
 document.querySelector('#app').innerHTML = `
@@ -54,12 +59,24 @@ const player = createPlayer(startCol, startRow)
 
 let currentLevel = 1
 let resistors = []
+let logicGates = []
+let busJammers = []
+let capacitors = []
 const projectiles = []
 const pickupStockpile = { count: 0 }
 let pickups = []
 let glitchTokens = []
 const status = { glitchTimer: 0 }
 let gameOver = false
+
+const music = createMusicPlayer(0.4)
+window.addEventListener('keydown', () => music.start(), { once: true })
+window.addEventListener('pointerdown', () => music.start(), { once: true })
+
+function fireEnemyProjectileWithSfx(source, objective, projectiles) {
+  playSfx('resistorLaser')
+  fireEnemyProjectile(source, objective, projectiles)
+}
 
 let romObjective = createObjective(startCol, startRow, 0.5, 0.22, 100)
 
@@ -70,15 +87,29 @@ function startLevel1Fight() {
   glitchTokens = spawnGlitchTokens(2, startCol, startRow)
 }
 
+function startLevel2() {
+  logicGates = spawnLogicGates(3, startCol, startRow)
+  capacitors = spawnCapacitors(2, startCol, startRow)
+
+  const startRoom = rooms.get(roomKey(startCol, startRow))
+  const doorSide = Object.keys(startRoom.doors).find((d) => startRoom.doors[d])
+  busJammers = doorSide ? [spawnBusJammer(startCol, startRow, doorSide)] : []
+}
+
+function clearAllEncounters() {
+  resistors = []
+  pickups = []
+  glitchTokens = []
+  logicGates = []
+  busJammers = []
+  capacitors = []
+  romObjective.active = false
+}
+
 function spawnLevelEnemies() {
-  if (currentLevel === 1) {
-    startLevel1Fight()
-  } else {
-    resistors = []
-    pickups = []
-    glitchTokens = []
-    romObjective.active = false
-  }
+  clearAllEncounters()
+  if (currentLevel === 1) startLevel1Fight()
+  if (currentLevel === 2) startLevel2()
 }
 
 function updateHud() {
@@ -106,8 +137,14 @@ const keyMap = {
   ArrowRight: 'right', d: 'right', D: 'right',
 }
 
+function isDoorBlocked(col, row, dir) {
+  return busJammers.some(
+    (j) => j.hp > 0 && j.roomCol === col && j.roomRow === row && j.doorSide === dir
+  )
+}
+
 window.addEventListener('keydown', (e) => {
-  if (['1', '3', '5'].includes(e.key)) {
+  if (['1', '2', '3', '5'].includes(e.key)) {
     currentLevel = Number(e.key)
     spawnLevelEnemies()
     updateHud()
@@ -116,8 +153,13 @@ window.addEventListener('keydown', (e) => {
   const dir = keyMap[e.key]
   if (dir) rawInput[dir] = true
 
-  if (e.key === ' ' && !e.repeat) fireZap(player, projectiles)
-  if (e.key.toLowerCase() === 'h' && !e.repeat) useHealthPickup(pickupStockpile, player)
+  if (e.key === ' ' && !e.repeat) {
+    fireZap(player, projectiles)
+    playSfx('playerLaser')
+  }
+  if (e.key.toLowerCase() === 'h' && !e.repeat) {
+    if (useHealthPickup(pickupStockpile, player)) playSfx('healthRestored')
+  }
 })
 window.addEventListener('keyup', (e) => {
   const dir = keyMap[e.key]
@@ -140,14 +182,22 @@ function loop() {
 
   const input = applyGlitch(status, rawInput)
 
-  movePlayer(player, input, rooms, roomKey)
+  movePlayer(player, input, rooms, roomKey, isDoorBlocked)
   updateResistors(resistors)
-  updateResistorAttacks(resistors, romObjective, fireEnemyProjectile, projectiles)
-  updateProjectiles(projectiles, resistors, romObjective, damageObjective)
-  collectPickups(pickups, player, pickupStockpile)
+  updateResistorAttacks(resistors, romObjective, fireEnemyProjectileWithSfx, projectiles)
+  updateLogicGates(logicGates)
+  repelFromCapacitors(capacitors, [resistors, logicGates])
+
+  const hittables = [...resistors, ...logicGates, ...busJammers]
+  updateProjectiles(projectiles, hittables, romObjective, damageObjective)
+  resistors = resistors.filter((e) => e.hp > 0)
+  logicGates = logicGates.filter((g) => g.hp > 0)
+  busJammers = busJammers.filter((j) => j.hp > 0)
+
+  collectPickups(pickups, player, pickupStockpile, () => playSfx('healthPickup'))
   checkGlitchContact(glitchTokens, player, status)
 
-  if (romObjective.active && resistors.length === 0) {
+  if (romObjective.active && resistors.length === 0 && currentLevel === 1) {
     romObjective.active = false
   }
   if (romObjective.active && romObjective.hp <= 0) {
@@ -158,7 +208,10 @@ function loop() {
 
   renderRoom(ctx, canvas, rooms, roomKey, player)
   renderChipProps(ctx, canvas, LEVELS[currentLevel].chips)
+  renderCapacitors(ctx, canvas, capacitors, player.roomCol, player.roomRow)
   renderResistors(ctx, canvas, resistors, player.roomCol, player.roomRow)
+  renderLogicGates(ctx, canvas, logicGates, player.roomCol, player.roomRow)
+  renderBusJammers(ctx, canvas, busJammers, player.roomCol, player.roomRow)
   renderProjectiles(ctx, canvas, projectiles, player.roomCol, player.roomRow)
   renderPickups(ctx, canvas, pickups, player.roomCol, player.roomRow)
   renderGlitchTokens(ctx, canvas, glitchTokens, player.roomCol, player.roomRow)

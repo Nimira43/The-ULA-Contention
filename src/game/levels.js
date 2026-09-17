@@ -4,6 +4,11 @@ export const LEVELS = {
     status: 'Intrusion!!!',
     chips: [{ label: 'D23128C ROM', x: 0.5, y: 0.22, color: 'safe' }],
   },
+  2: {
+    areaName: 'Address Bus',
+    status: 'Contention Rising...',
+    chips: [],
+  },
   3: {
     areaName: 'Upper RAM',
     status: 'Memory Leaks!',
@@ -16,7 +21,7 @@ export const LEVELS = {
   },
   5: {
     areaName: 'The Unhinged CPU',
-    status: 'Wibble! Jibber!',
+    status: 'Woof!!! Baa!',
     chips: [{ label: 'D780C-1', x: 0.5, y: 0.5, color: 'danger' }],
   },
 }

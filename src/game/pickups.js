@@ -15,21 +15,23 @@ export function spawnHealthPickups(count, roomCol, roomRow) {
   return pickups
 }
 
-export function collectPickups(pickups, player, stockpile) {
+export function collectPickups(pickups, player, stockpile, onCollect) {
   for (const p of pickups) {
     if (p.collected) continue
     if (p.roomCol !== player.roomCol || p.roomRow !== player.roomRow) continue
     if (Math.hypot(p.x - player.x, p.y - player.y) < PICKUP_RADIUS) {
       p.collected = true
       stockpile.count += 1
+      if (onCollect) onCollect()
     }
   }
 }
 
 export function useHealthPickup(stockpile, player) {
-  if (stockpile.count <= 0) return
+  if (stockpile.count <= 0) return false
   stockpile.count -= 1
   player.health = Math.min(100, player.health + HEAL_PERCENT)
+  return true
 }
 
 export function renderPickups(ctx, canvas, pickups, roomCol, roomRow) {
