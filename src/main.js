@@ -1,15 +1,27 @@
 import './css/styles.css'
 import { generateGrid, roomKey } from './game/grid.js'
-import { createPlayer, movePlayer } from './game/player.js'
+import { createPlayer, movePlayer, damagePlayer } from './game/player.js'
 import { renderRoom, renderChipProps } from './game/render.js'
 import { spawnSwarm, updateResistors, updateResistorAttacks, renderResistors } from './game/enemies.js'
-import { fireZap, fireEnemyProjectile, updateProjectiles, renderProjectiles } from './game/projectiles.js'
+import {
+  fireZap,
+  fireEnemyProjectile,
+  fireEnemyProjectileAtPlayer,
+  updateProjectiles,
+  renderProjectiles,
+} from './game/projectiles.js'
 import { createObjective, damageObjective, objectiveHealthPercent } from './game/objective.js'
 import { spawnHealthPickups, collectPickups, useHealthPickup, renderPickups } from './game/pickups.js'
 import { spawnGlitchTokens, checkGlitchContact, applyGlitch, renderGlitchTokens } from './game/hazards.js'
 import { spawnLogicGates, updateLogicGates, renderLogicGates } from './game/logicgates.js'
-import { spawnBusJammer, renderBusJammers } from './game/busjammer.js'
-import { spawnCapacitors, repelFromCapacitors, renderCapacitors } from './game/capacitors.js'
+import {
+  spawnBusJammer,
+  activateHunt,
+  updateBusJammerHunt,
+  updateBusJammerAttacks,
+  renderBusJammers,
+} from './game/busjammer.js'
+import { spawnCapacitors, repelFromCapacitors, damageCapacitor, renderCapacitors } from './game/capacitors.js'
 import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
 import { LEVELS } from './game/levels.js'
@@ -78,6 +90,11 @@ function fireEnemyProjectileWithSfx(source, objective, projectiles) {
   fireEnemyProjectile(source, objective, projectiles)
 }
 
+function fireAtPlayerWithSfx(source, player, projectiles) {
+  playSfx('resistorLaser')
+  fireEnemyProjectileAtPlayer(source, player, projectiles)
+}
+
 let romObjective = createObjective(startCol, startRow, 0.5, 0.22, 100)
 
 function startLevel1Fight() {
@@ -129,13 +146,16 @@ function updateHud() {
   }
 }
 
-const rawInput = { up: false, down: false, left: false, right: false }
+const rawInput = { up: false, down: false, left: false, right: false, fire: false }
 const keyMap = {
   ArrowUp: 'up', w: 'up', W: 'up',
   ArrowDown: 'down', s: 'down', S: 'down',
   ArrowLeft: 'left', a: 'left', A: 'left',
   ArrowRight: 'right', d: 'right', D: 'right',
 }
+
+const FIRE_COOLDOWN_FRAMES = 10 
+let fireCooldown = 0
 
 function isDoorBlocked(col, row, dir) {
   return busJammers.some(
@@ -153,10 +173,7 @@ window.addEventListener('keydown', (e) => {
   const dir = keyMap[e.key]
   if (dir) rawInput[dir] = true
 
-  if (e.key === ' ' && !e.repeat) {
-    fireZap(player, projectiles)
-    playSfx('playerLaser')
-  }
+  if (e.key === ' ') rawInput.fire = true
   if (e.key.toLowerCase() === 'h' && !e.repeat) {
     if (useHealthPickup(pickupStockpile, player)) playSfx('healthRestored')
   }
@@ -164,6 +181,7 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   const dir = keyMap[e.key]
   if (dir) rawInput[dir] = false
+  if (e.key === ' ') rawInput.fire = false
 })
 
 spawnLevelEnemies()
@@ -183,16 +201,41 @@ function loop() {
   const input = applyGlitch(status, rawInput)
 
   movePlayer(player, input, rooms, roomKey, isDoorBlocked)
+
+  fireCooldown -= 1
+  if (rawInput.fire && fireCooldown <= 0) {
+    fireZap(player, projectiles)
+    playSfx('playerLaser')
+    fireCooldown = FIRE_COOLDOWN_FRAMES
+  }
+
   updateResistors(resistors)
   updateResistorAttacks(resistors, romObjective, fireEnemyProjectileWithSfx, projectiles)
-  updateLogicGates(logicGates)
+  updateLogicGates(logicGates, player, projectiles, fireAtPlayerWithSfx)
+
+  if (currentLevel === 2 && logicGates.length === 0) {
+    for (const j of busJammers) {
+      if (j.mode === 'blocking') activateHunt(j)
+    }
+  }
+  updateBusJammerHunt(busJammers, player)
+  updateBusJammerAttacks(busJammers, player, projectiles, fireAtPlayerWithSfx)
+
   repelFromCapacitors(capacitors, [resistors, logicGates])
 
   const hittables = [...resistors, ...logicGates, ...busJammers]
-  updateProjectiles(projectiles, hittables, romObjective, damageObjective)
+  updateProjectiles(projectiles, hittables, {
+    objective: romObjective,
+    damageObjectiveFn: damageObjective,
+    player,
+    capacitors,
+    damageCapacitorFn: damageCapacitor,
+    damagePlayerFn: damagePlayer,
+  })
   resistors = resistors.filter((e) => e.hp > 0)
   logicGates = logicGates.filter((g) => g.hp > 0)
   busJammers = busJammers.filter((j) => j.hp > 0)
+  capacitors = capacitors.filter((c) => c.hp > 0)
 
   collectPickups(pickups, player, pickupStockpile, () => playSfx('healthPickup'))
   checkGlitchContact(glitchTokens, player, status)
@@ -201,6 +244,9 @@ function loop() {
     romObjective.active = false
   }
   if (romObjective.active && romObjective.hp <= 0) {
+    gameOver = true
+  }
+  if (player.health <= 0) {
     gameOver = true
   }
 

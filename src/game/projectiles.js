@@ -2,6 +2,9 @@ const PLAYER_PROJECTILE_SPEED = 0.05
 const ENEMY_PROJECTILE_SPEED = 0.02
 const PROJECTILE_DAMAGE = 1
 const OBJECTIVE_DAMAGE = 4
+const PLAYER_DAMAGE = 10
+const CAPACITOR_DRAIN = 20
+const HIT_RADIUS = 0.05
 
 export function fireZap(player, projectiles) {
   projectiles.push({
@@ -21,6 +24,7 @@ export function fireEnemyProjectile(source, objective, projectiles) {
   const len = Math.hypot(dx, dy) || 1
   projectiles.push({
     owner: 'enemy',
+    target: 'objective',
     roomCol: source.roomCol,
     roomRow: source.roomRow,
     x: source.x,
@@ -30,7 +34,25 @@ export function fireEnemyProjectile(source, objective, projectiles) {
   })
 }
 
-export function updateProjectiles(projectiles, hittables, objective, damageObjectiveFn) {
+export function fireEnemyProjectileAtPlayer(source, player, projectiles) {
+  const dx = player.x - source.x
+  const dy = player.y - source.y
+  const len = Math.hypot(dx, dy) || 1
+  projectiles.push({
+    owner: 'enemy',
+    target: 'player',
+    roomCol: source.roomCol,
+    roomRow: source.roomRow,
+    x: source.x,
+    y: source.y,
+    vx: (dx / len) * ENEMY_PROJECTILE_SPEED,
+    vy: (dy / len) * ENEMY_PROJECTILE_SPEED,
+  })
+}
+
+export function updateProjectiles(projectiles, hittables, opts) {
+  const { objective, damageObjectiveFn, player, capacitors, damageCapacitorFn, damagePlayerFn } = opts
+
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i]
     p.x += p.vx
@@ -48,19 +70,49 @@ export function updateProjectiles(projectiles, hittables, objective, damageObjec
           !e.invulnerable &&
           e.roomCol === p.roomCol &&
           e.roomRow === p.roomRow &&
-          Math.hypot(e.x - p.x, e.y - p.y) < 0.05
+          Math.hypot(e.x - p.x, e.y - p.y) < HIT_RADIUS
       )
       if (hit) {
         hit.hp -= PROJECTILE_DAMAGE
         projectiles.splice(i, 1)
       }
-    } else if (p.owner === 'enemy' && objective && objective.active) {
+      continue
+    }
+
+    if (p.owner === 'enemy' && p.target === 'objective') {
       if (
+        objective &&
+        objective.active &&
         p.roomCol === objective.roomCol &&
         p.roomRow === objective.roomRow &&
-        Math.hypot(objective.x - p.x, objective.y - p.y) < 0.05
+        Math.hypot(objective.x - p.x, objective.y - p.y) < HIT_RADIUS
       ) {
         damageObjectiveFn(objective, OBJECTIVE_DAMAGE)
+        projectiles.splice(i, 1)
+      }
+      continue
+    }
+
+    if (p.owner === 'enemy' && p.target === 'player' && player) {
+      if (
+        p.roomCol === player.roomCol &&
+        p.roomRow === player.roomRow &&
+        Math.hypot(player.x - p.x, player.y - p.y) < HIT_RADIUS
+      ) {
+        const shield =
+          capacitors &&
+          capacitors.find(
+            (c) =>
+              c.hp > 0 &&
+              c.roomCol === player.roomCol &&
+              c.roomRow === player.roomRow &&
+              Math.hypot(c.x - player.x, c.y - player.y) < c.radius
+          )
+        if (shield) {
+          damageCapacitorFn(shield, CAPACITOR_DRAIN)
+        } else {
+          damagePlayerFn(player, PLAYER_DAMAGE)
+        }
         projectiles.splice(i, 1)
       }
     }

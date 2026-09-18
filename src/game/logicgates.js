@@ -1,5 +1,7 @@
 const CHARGED_DURATION = 120 
 const DISCHARGED_DURATION = 180 
+const BURST_SHOTS = 3
+const BURST_GAP = 8 
 
 export function spawnLogicGates(count, roomCol, roomRow) {
   const gates = []
@@ -13,18 +15,35 @@ export function spawnLogicGates(count, roomCol, roomRow) {
       charged: false,
       invulnerable: true,
       timer: Math.floor(Math.random() * DISCHARGED_DURATION),
+      burstShotsLeft: 0,
+      burstTimer: 0,
     })
   }
   return gates
 }
 
-export function updateLogicGates(gates) {
+export function updateLogicGates(gates, player, projectiles, fireAtPlayerFn) {
   for (const g of gates) {
     g.timer -= 1
     if (g.timer <= 0) {
       g.charged = !g.charged
       g.invulnerable = !g.charged
       g.timer = g.charged ? CHARGED_DURATION : DISCHARGED_DURATION
+      if (g.charged) {
+        g.burstShotsLeft = BURST_SHOTS
+        g.burstTimer = 0
+      }
+    }
+
+    if (g.burstShotsLeft > 0) {
+      g.burstTimer -= 1
+      if (g.burstTimer <= 0) {
+        if (g.roomCol === player.roomCol && g.roomRow === player.roomRow) {
+          fireAtPlayerFn(g, player, projectiles)
+        }
+        g.burstShotsLeft -= 1
+        g.burstTimer = BURST_GAP
+      }
     }
   }
 }

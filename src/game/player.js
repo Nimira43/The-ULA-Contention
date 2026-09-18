@@ -14,6 +14,10 @@ export function createPlayer(startCol, startRow) {
   }
 }
 
+export function damagePlayer(player, amount) {
+  player.health = Math.max(0, player.health - amount)
+}
+
 export function movePlayer(player, input, rooms, roomKeyFn, isDoorBlocked) {
   let dx = 0
   let dy = 0
