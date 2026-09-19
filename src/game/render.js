@@ -1,8 +1,8 @@
-const WALL_COLOR = '#03da03'
-const PLAYER_COLOR = '#81f681'
+const WALL_COLOUR = '#03da03'
+const PLAYER_COLOUR = '#81f681'
 const DOOR_GAP = 0.24
 const MARGIN = 20
-const CHIP_COLORS = { safe: '#03da03', danger: '#ff3b3b' }
+const CHIP_COLOURS = { safe: '#03da03', danger: '#ff3b3b' }
 
 export function renderRoom(ctx, canvas, rooms, roomKeyFn, player) {
   const { width, height } = canvas
@@ -14,7 +14,7 @@ export function renderRoom(ctx, canvas, rooms, roomKeyFn, player) {
   const w = width - MARGIN * 2
   const h = height - MARGIN * 2
 
-  ctx.strokeStyle = WALL_COLOR
+  ctx.strokeStyle = WALL_COLOUR
   ctx.lineWidth = 4
 
   drawWall(ctx, MARGIN, MARGIN, MARGIN + w, MARGIN, room.doors.N, false)
@@ -24,7 +24,7 @@ export function renderRoom(ctx, canvas, rooms, roomKeyFn, player) {
 
   const px = MARGIN + player.x * w
   const py = MARGIN + player.y * h
-  ctx.fillStyle = PLAYER_COLOR
+  ctx.fillStyle = PLAYER_COLOUR
   ctx.beginPath()
   ctx.arc(px, py, 10, 0, Math.PI * 2)
   ctx.fill()
@@ -41,7 +41,7 @@ export function renderChipProps(ctx, canvas, chips) {
   ctx.textBaseline = 'middle'
 
   for (const chip of chips) {
-    const color = CHIP_COLORS[chip.color] || CHIP_COLORS.safe
+    const colour = CHIP_COLOURS[chip.colour] || CHIP_COLOURS.safe
     const cx = MARGIN + chip.x * w
     const cy = MARGIN + chip.y * h
     const boxW = ctx.measureText(chip.label).width + 20
@@ -49,10 +49,10 @@ export function renderChipProps(ctx, canvas, chips) {
 
     ctx.fillStyle = '#1a1a1a'
     ctx.fillRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH)
-    ctx.strokeStyle = color
+    ctx.strokeStyle = colour
     ctx.lineWidth = 2
     ctx.strokeRect(cx - boxW / 2, cy - boxH / 2, boxW, boxH)
-    ctx.fillStyle = color
+    ctx.fillStyle = colour
     ctx.fillText(chip.label, cx, cy)
   }
 }

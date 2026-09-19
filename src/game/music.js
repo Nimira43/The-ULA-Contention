@@ -1,12 +1,12 @@
 const TRACKS = [
-  '/music/Track01.ogg',
-  '/music/Track02.mp3',
-  '/music/Track03.ogg',
-  '/music/Track04.wav',
-  '/music/Track05.wav',
+  '/music/Track01.mp3',
+  '/music/Track02.ogg',
+  '/music/Track03.wav',
+  '/music/Track04.mp3',
+  '/music/Track05.ogg',
   '/music/Track06.wav',
-  '/music/Track07.mp3',
-  '/music/Track08.ogg',
+  '/music/Track07.ogg',
+  '/music/Track09.wav',
 ]
 
 export function createMusicPlayer(volume = 0.8 )  {

@@ -2,7 +2,17 @@ import './css/styles.css'
 import { generateGrid, roomKey } from './game/grid.js'
 import { createPlayer, movePlayer, damagePlayer } from './game/player.js'
 import { renderRoom, renderChipProps } from './game/render.js'
-import { spawnSwarm, updateResistors, updateResistorAttacks, renderResistors } from './game/enemies.js'
+import {
+  spawnSwarm,
+  spawnRamLeakers,
+  spawnFastResistors,
+  makeSplitChild,
+  updateResistors,
+  updateFastDash,
+  checkFastResistorContact,
+  updateResistorAttacks,
+  renderResistors,
+} from './game/enemies.js'
 import {
   fireZap,
   fireEnemyProjectile,
@@ -21,7 +31,21 @@ import {
   updateBusJammerAttacks,
   renderBusJammers,
 } from './game/busjammer.js'
-import { spawnCapacitors, repelFromCapacitors, damageCapacitor, renderCapacitors } from './game/capacitors.js'
+import {
+  spawnCapacitors,
+  spawnHostileCapacitors,
+  repelFromCapacitors,
+  checkHostileCapacitorContact,
+  damageCapacitor,
+  renderCapacitors,
+} from './game/capacitors.js'
+import { spawnLeakZones, updateLeakZones, renderLeakZones } from './game/leakzones.js'
+import {
+  spawnCorruptionBalls,
+  splitCorruptionBall,
+  updateCorruptionBalls,
+  renderCorruptionBalls,
+} from './game/corruptionballs.js'
 import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
 import { LEVELS } from './game/levels.js'
@@ -74,12 +98,15 @@ let resistors = []
 let logicGates = []
 let busJammers = []
 let capacitors = []
+let leakZones = []
+let corruptionBalls = []
 const projectiles = []
 const pickupStockpile = { count: 0 }
 let pickups = []
 let glitchTokens = []
 const status = { glitchTimer: 0 }
 let gameOver = false
+let levelWon = false
 
 const music = createMusicPlayer(0.4)
 window.addEventListener('keydown', () => music.start(), { once: true })
@@ -113,6 +140,38 @@ function startLevel2() {
   busJammers = doorSide ? [spawnBusJammer(startCol, startRow, doorSide)] : []
 }
 
+function startLevel3() {
+  logicGates = spawnLogicGates(2, startCol, startRow, {
+    kind: 'wraith',
+    chargedDuration: 90,
+    dischargedDuration: 150,
+    burstShots: 1,
+  })
+  resistors = spawnRamLeakers(4, startCol, startRow)
+  leakZones = spawnLeakZones(3, startCol, startRow)
+  pickups = spawnHealthPickups(2, startCol, startRow)
+}
+
+function keepAwayFromCentre(entities, minDist = 0.22, cx = 0.5, cy = 0.5) {
+  for (const e of entities) {
+    const dist = Math.hypot(e.x - cx, e.y - cy)
+    if (dist < minDist) {
+      const angle = Math.random() * Math.PI * 2
+      e.x = Math.min(0.9, Math.max(0.1, cx + Math.cos(angle) * minDist))
+      e.y = Math.min(0.9, Math.max(0.1, cy + Math.sin(angle) * minDist))
+    }
+  }
+}
+
+function startLevel4() {
+  resistors = spawnFastResistors(3, startCol, startRow)
+  keepAwayFromCentre(resistors)
+  capacitors = spawnHostileCapacitors(1, startCol, startRow)
+  keepAwayFromCentre(capacitors)
+  corruptionBalls = spawnCorruptionBalls(3, startCol, startRow)
+  pickups = spawnHealthPickups(2, startCol, startRow)
+}
+
 function clearAllEncounters() {
   resistors = []
   pickups = []
@@ -120,13 +179,20 @@ function clearAllEncounters() {
   logicGates = []
   busJammers = []
   capacitors = []
+  leakZones = []
+  corruptionBalls = []
   romObjective.active = false
 }
 
 function spawnLevelEnemies() {
   clearAllEncounters()
+  player.health = 100
+  gameOver = false
+  levelWon = false
   if (currentLevel === 1) startLevel1Fight()
   if (currentLevel === 2) startLevel2()
+  if (currentLevel === 3) startLevel3()
+  if (currentLevel === 4) startLevel4()
 }
 
 function updateHud() {
@@ -164,10 +230,14 @@ function isDoorBlocked(col, row, dir) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (['1', '2', '3', '5'].includes(e.key)) {
+  if (['1', '2', '3', '4', '5'].includes(e.key)) {
     currentLevel = Number(e.key)
     spawnLevelEnemies()
     updateHud()
+    if (!loopRunning) {
+      loopRunning = true
+      loop()
+    }
   }
 
   const dir = keyMap[e.key]
@@ -187,6 +257,8 @@ window.addEventListener('keyup', (e) => {
 spawnLevelEnemies()
 updateHud()
 
+let loopRunning = false
+
 function loop() {
   if (gameOver) {
     ctx.fillStyle = '#000'
@@ -195,6 +267,17 @@ function loop() {
     ctx.font = "40px 'VT323', monospace"
     ctx.textAlign = 'center'
     ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2)
+    loopRunning = false
+    return
+  }
+  if (levelWon) {
+    ctx.fillStyle = '#000'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = '#81f681'
+    ctx.font = "40px 'VT323', monospace"
+    ctx.textAlign = 'center'
+    ctx.fillText('CORRUPTION CLEARED!', canvas.width / 2, canvas.height / 2)
+    loopRunning = false
     return
   }
 
@@ -210,6 +293,8 @@ function loop() {
   }
 
   updateResistors(resistors)
+  updateFastDash(resistors, player)
+  checkFastResistorContact(resistors, player, damagePlayer)
   updateResistorAttacks(resistors, romObjective, fireEnemyProjectileWithSfx, projectiles)
   updateLogicGates(logicGates, player, projectiles, fireAtPlayerWithSfx)
 
@@ -222,8 +307,11 @@ function loop() {
   updateBusJammerAttacks(busJammers, player, projectiles, fireAtPlayerWithSfx)
 
   repelFromCapacitors(capacitors, [resistors, logicGates])
+  checkHostileCapacitorContact(capacitors, player, damagePlayer)
+  updateLeakZones(leakZones, player, damagePlayer)
+  updateCorruptionBalls(corruptionBalls, player, damagePlayer)
 
-  const hittables = [...resistors, ...logicGates, ...busJammers]
+  const hittables = [...resistors, ...logicGates, ...busJammers, ...leakZones, ...corruptionBalls]
   updateProjectiles(projectiles, hittables, {
     objective: romObjective,
     damageObjectiveFn: damageObjective,
@@ -232,10 +320,23 @@ function loop() {
     damageCapacitorFn: damageCapacitor,
     damagePlayerFn: damagePlayer,
   })
+
+  const splitting = resistors.filter((e) => e.hp <= 0 && e.splitOnDeath)
+  for (const parent of splitting) {
+    resistors.push(makeSplitChild(parent), makeSplitChild(parent))
+  }
+
+  const poppedBalls = corruptionBalls.filter((b) => b.hp <= 0)
+  for (const ball of poppedBalls) {
+    corruptionBalls.push(...splitCorruptionBall(ball))
+  }
+
   resistors = resistors.filter((e) => e.hp > 0)
   logicGates = logicGates.filter((g) => g.hp > 0)
   busJammers = busJammers.filter((j) => j.hp > 0)
   capacitors = capacitors.filter((c) => c.hp > 0)
+  leakZones = leakZones.filter((z) => z.hp > 0)
+  corruptionBalls = corruptionBalls.filter((b) => b.hp > 0)
 
   collectPickups(pickups, player, pickupStockpile, () => playSfx('healthPickup'))
   checkGlitchContact(glitchTokens, player, status)
@@ -243,11 +344,17 @@ function loop() {
   if (romObjective.active && resistors.length === 0 && currentLevel === 1) {
     romObjective.active = false
   }
+
   if (romObjective.active && romObjective.hp <= 0) {
     gameOver = true
   }
+
   if (player.health <= 0) {
     gameOver = true
+  }
+
+  if (currentLevel === 4 && corruptionBalls.length === 0) {
+    levelWon = true
   }
 
   updateHud()
@@ -255,7 +362,9 @@ function loop() {
   renderRoom(ctx, canvas, rooms, roomKey, player)
   renderChipProps(ctx, canvas, LEVELS[currentLevel].chips)
   renderCapacitors(ctx, canvas, capacitors, player.roomCol, player.roomRow)
+  renderLeakZones(ctx, canvas, leakZones, player.roomCol, player.roomRow)
   renderResistors(ctx, canvas, resistors, player.roomCol, player.roomRow)
+  renderCorruptionBalls(ctx, canvas, corruptionBalls, player.roomCol, player.roomRow)
   renderLogicGates(ctx, canvas, logicGates, player.roomCol, player.roomRow)
   renderBusJammers(ctx, canvas, busJammers, player.roomCol, player.roomRow)
   renderProjectiles(ctx, canvas, projectiles, player.roomCol, player.roomRow)
@@ -265,4 +374,5 @@ function loop() {
   requestAnimationFrame(loop)
 }
 
+loopRunning = true
 loop()

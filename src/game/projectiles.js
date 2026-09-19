@@ -70,7 +70,7 @@ export function updateProjectiles(projectiles, hittables, opts) {
           !e.invulnerable &&
           e.roomCol === p.roomCol &&
           e.roomRow === p.roomRow &&
-          Math.hypot(e.x - p.x, e.y - p.y) < HIT_RADIUS
+          Math.hypot(e.x - p.x, e.y - p.y) < (e.radius !== undefined ? e.radius : HIT_RADIUS)
       )
       if (hit) {
         hit.hp -= PROJECTILE_DAMAGE

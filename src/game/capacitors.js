@@ -1,6 +1,8 @@
 const RADIUS = 0.14
 const PUSH_STRENGTH = 0.05
 const MAX_HP = 100
+const HOSTILE_DAMAGE = 8
+const HOSTILE_COOLDOWN = 45
 
 export function spawnCapacitors(count, roomCol, roomRow) {
   const capacitors = []
@@ -13,6 +15,25 @@ export function spawnCapacitors(count, roomCol, roomRow) {
       radius: RADIUS,
       hp: MAX_HP,
       maxHp: MAX_HP,
+      hostile: false,
+    })
+  }
+  return capacitors
+}
+
+export function spawnHostileCapacitors(count, roomCol, roomRow) {
+  const capacitors = []
+  for (let i = 0; i < count; i++) {
+    capacitors.push({
+      roomCol,
+      roomRow,
+      x: 0.2 + Math.random() * 0.6,
+      y: 0.2 + Math.random() * 0.6,
+      radius: RADIUS * 0.6,
+      hp: MAX_HP,
+      maxHp: MAX_HP,
+      hostile: true,
+      contactCooldown: 0,
     })
   }
   return capacitors
@@ -24,7 +45,7 @@ export function damageCapacitor(capacitor, amount) {
 
 export function repelFromCapacitors(capacitors, enemyGroups) {
   for (const cap of capacitors) {
-    if (cap.hp <= 0) continue
+    if (cap.hp <= 0 || cap.hostile) continue
     for (const group of enemyGroups) {
       for (const e of group) {
         if (e.roomCol !== cap.roomCol || e.roomRow !== cap.roomRow) continue
@@ -41,6 +62,22 @@ export function repelFromCapacitors(capacitors, enemyGroups) {
   }
 }
 
+export function checkHostileCapacitorContact(capacitors, player, damagePlayerFn) {
+  for (const cap of capacitors) {
+    if (!cap.hostile || cap.hp <= 0) continue
+    if (cap.roomCol !== player.roomCol || cap.roomRow !== player.roomRow) continue
+
+    if (cap.contactCooldown > 0) {
+      cap.contactCooldown -= 1
+      continue
+    }
+    if (Math.hypot(cap.x - player.x, cap.y - player.y) < cap.radius) {
+      damagePlayerFn(player, HOSTILE_DAMAGE)
+      cap.contactCooldown = HOSTILE_COOLDOWN
+    }
+  }
+}
+
 export function renderCapacitors(ctx, canvas, capacitors, roomCol, roomRow) {
   const MARGIN = 20
   const { width, height } = canvas
@@ -52,18 +89,22 @@ export function renderCapacitors(ctx, canvas, capacitors, roomCol, roomRow) {
     const cx = MARGIN + cap.x * w
     const cy = MARGIN + cap.y * h
 
-    ctx.strokeStyle = 'rgba(59, 123, 214, 0.35)'
+    const bodyColour = cap.hostile ? '#d63b3b' : '#3b7bd6'
+    const ringColour = cap.hostile ? 'rgba(214, 59, 59, 0.4)' : 'rgba(59, 123, 214, 0.35)'
+    const stripeColour = cap.hostile ? '#f0a0a0' : '#9ac0f0'
+
+    ctx.strokeStyle = ringColour
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.arc(cx, cy, cap.radius * w, 0, Math.PI * 2)
     ctx.stroke()
 
-    ctx.fillStyle = '#3b7bd6'
+    ctx.fillStyle = bodyColour
     ctx.fillRect(cx - 7, cy - 12, 14, 24)
     ctx.strokeStyle = '#1a1a1a'
     ctx.lineWidth = 2
     ctx.strokeRect(cx - 7, cy - 12, 14, 24)
-    ctx.strokeStyle = '#9ac0f0'
+    ctx.strokeStyle = stripeColour
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(cx - 3, cy - 12)
@@ -72,7 +113,7 @@ export function renderCapacitors(ctx, canvas, capacitors, roomCol, roomRow) {
     ctx.lineTo(cx + 3, cy + 12)
     ctx.stroke()
 
-    if (cap.hp < cap.maxHp) {
+    if (!cap.hostile && cap.hp < cap.maxHp) {
       const barW = 24
       ctx.fillStyle = '#1a1a1a'
       ctx.fillRect(cx - barW / 2, cy + 16, barW, 4)

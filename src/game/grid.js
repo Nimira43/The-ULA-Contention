@@ -30,16 +30,8 @@ export function generateGrid(cols, rows, roomCount) {
   const startRow = Math.floor(Math.random() * rows)
   const startKey = roomKey(startCol, startRow)
 
-  rooms.set(startKey, {
-    col: startCol,
-    row: startRow,
-    doors: {}
-  })
-  
-  const stack = [{
-    col: startCol,
-    row: startRow
-  }]
+  rooms.set(startKey, { col: startCol, row: startRow, doors: {} })
+  const stack = [{ col: startCol, row: startRow }]
 
   while (stack.length && rooms.size < roomCount) {
     const current = stack[stack.length - 1]

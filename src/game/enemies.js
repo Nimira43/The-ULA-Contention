@@ -12,6 +12,8 @@ const LOW_VALUE_TIERS = [
   { bands: ['orange', 'orange', 'brown'], ohms: '330Ω', hp: 2, speed: 0.009 },
 ]
 
+const FAST_TIER = { bands: ['brown', 'black', 'brown'], ohms: '100Ω', hp: 1, speed: 0.009 }
+
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
 export function spawnResistors(rooms, roomKeyFn, count, excludeCol, excludeRow) {
@@ -36,8 +38,35 @@ export function spawnSwarm(count, roomCol, roomRow) {
   return enemies
 }
 
-function makeResistor(roomCol, roomRow) {
-  const tier = LOW_VALUE_TIERS[Math.floor(Math.random() * LOW_VALUE_TIERS.length)]
+export function spawnRamLeakers(count, roomCol, roomRow) {
+  const enemies = []
+  for (let i = 0; i < count; i++) {
+    enemies.push(makeResistor(roomCol, roomRow, { splitOnDeath: true, generation: 0 }))
+  }
+  return enemies
+}
+
+export function makeSplitChild(parent) {
+  const child = makeResistor(parent.roomCol, parent.roomRow, {
+    splitOnDeath: false,
+    generation: (parent.generation || 0) + 1,
+  })
+  child.x = parent.x
+  child.y = parent.y
+  child.hp = 1 
+  return child
+}
+
+export function spawnFastResistors(count, roomCol, roomRow) {
+  const enemies = []
+  for (let i = 0; i < count; i++) {
+    enemies.push(makeResistor(roomCol, roomRow, { tier: FAST_TIER, fast: true }))
+  }
+  return enemies
+}
+
+function makeResistor(roomCol, roomRow, opts = {}) {
+  const tier = opts.tier || LOW_VALUE_TIERS[Math.floor(Math.random() * LOW_VALUE_TIERS.length)]
   const angle = Math.random() * Math.PI * 2
   return {
     roomCol,
@@ -50,6 +79,11 @@ function makeResistor(roomCol, roomRow) {
     bands: tier.bands,
     ohms: tier.ohms,
     attackCooldown: 60 + Math.random() * 60,
+    splitOnDeath: opts.splitOnDeath || false,
+    generation: opts.generation || 0,
+    fast: opts.fast || false,
+    dashCooldown: opts.fast ? 60 + Math.random() * 60 : undefined,
+    contactCooldown: 0,
   }
 }
 
@@ -70,6 +104,23 @@ export function updateResistors(enemies) {
   }
 }
 
+export function updateFastDash(enemies, player) {
+  for (const e of enemies) {
+    if (!e.fast) continue
+    if (e.roomCol !== player.roomCol || e.roomRow !== player.roomRow) continue
+
+    e.dashCooldown -= 1
+    if (e.dashCooldown <= 0) {
+      const dx = player.x - e.x
+      const dy = player.y - e.y
+      const len = Math.hypot(dx, dy) || 1
+      e.vx = (dx / len) * FAST_TIER.speed * 1.3
+      e.vy = (dy / len) * FAST_TIER.speed * 1.3
+      e.dashCooldown = 140 + Math.random() * 80
+    }
+  }
+}
+
 export function updateResistorAttacks(enemies, objective, fireEnemyProjectile, projectiles) {
   if (!objective || !objective.active) return
 
@@ -80,6 +131,22 @@ export function updateResistorAttacks(enemies, objective, fireEnemyProjectile, p
     if (e.attackCooldown <= 0) {
       fireEnemyProjectile(e, objective, projectiles)
       e.attackCooldown = 90 + Math.random() * 60
+    }
+  }
+}
+
+export function checkFastResistorContact(enemies, player, damagePlayerFn) {
+  for (const e of enemies) {
+    if (!e.fast) continue
+    if (e.roomCol !== player.roomCol || e.roomRow !== player.roomRow) continue
+
+    if (e.contactCooldown > 0) {
+      e.contactCooldown -= 1
+      continue
+    }
+    if (Math.hypot(e.x - player.x, e.y - player.y) < 0.05) {
+      damagePlayerFn(player, 8)
+      e.contactCooldown = 60
     }
   }
 }
