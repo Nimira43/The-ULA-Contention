@@ -9,27 +9,25 @@ const TRACKS = [
   '/music/Track09.wav',
 ]
 
-export function createMusicPlayer(volume = 0.8 )  {
-  const audio = new Audio()     
+export function createMusicPlayer(volume = 0.5) {
+  const audio = new Audio()
   audio.volume = volume
   let index = 0
-  let started = false
 
   function playCurrent() {
     audio.src = TRACKS[index]
-    audio.play().catch(() => {})
+    return audio.play()
   }
 
   audio.addEventListener('ended', () => {
     index = (index + 1) % TRACKS.length
-    playCurrent()
+    playCurrent().catch(() => {})
   })
 
   return {
     start() {
-      if (started) return
-      started = true
-      playCurrent()
+      const attempt = audio.src ? audio.play() : playCurrent()
+      if (attempt && attempt.catch) attempt.catch(() => {})
     },
     stop() {
       audio.pause()
