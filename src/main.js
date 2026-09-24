@@ -46,6 +46,14 @@ import {
   updateCorruptionBalls,
   renderCorruptionBalls,
 } from './game/corruptionballs.js'
+import {
+  spawnCpuBoss,
+  updateCpuBossAttacks,
+  updateCpuBossStabilise,
+  cpuBossStabilityPercent,
+  renderCpuBoss
+} from './game/cpuboss.js'
+
 import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
 import { playLoadingScreen } from './game/loadingScreen.js'
@@ -69,8 +77,8 @@ function startGame() {
           <div class="hud-row"><span>Laser Regen</span><span id="hud-laser"></span></div>
           <div class="hud-row"><span>Health Pickups</span><span id="hud-pickups"></span></div>
         </div>
-        <div class="hud-row" id="hud-rom-row" style="display:none">
-          <span>ROM Health</span><span id="hud-rom"></span>
+        <div class="hud-row" id="hud-boss-row" style="display:none">
+          <span id="hud-boss-label"></span><span id="hud-boss-value"></span>
         </div>
         <div class="hud-area">
           <div id="hud-area-num"></div>
@@ -89,8 +97,9 @@ function startGame() {
     life: document.querySelector('#hud-life'),
     laser: document.querySelector('#hud-laser'),
     pickups: document.querySelector('#hud-pickups'),
-    romRow: document.querySelector('#hud-rom-row'),
-    rom: document.querySelector('#hud-rom'),
+    bossRow: document.querySelector('#hud-boss-row'),
+    bossLabel: document.querySelector('#hud-boss-label'),
+    bossValue: document.querySelector('#hud-boss-value'),
     areaNum: document.querySelector('#hud-area-num'),
     areaName: document.querySelector('#hud-area-name'),
     status: document.querySelector('#hud-status'),
@@ -107,6 +116,7 @@ function startGame() {
   let capacitors = []
   let leakZones = []
   let corruptionBalls = []
+  let cpuBoss = []
   const projectiles = []
   const pickupStockpile = { count: 0 }
   let pickups = []
@@ -114,6 +124,7 @@ function startGame() {
   const status = { glitchTimer: 0 }
   let gameOver = false
   let levelWon = false
+  let winMessage = ''
 
   function fireEnemyProjectileWithSfx(source, objective, projectiles) {
     playSfx('resistorLaser')
@@ -122,6 +133,11 @@ function startGame() {
 
   function fireAtPlayerWithSfx(source, player, projectiles) {
     playSfx('resistorLaser')
+    fireEnemyProjectileAtPlayer(source, player, projectiles)
+  }
+
+  function fireCpuLaserAtPlayer(source, player, projectiles) {
+    playSfx('cpuLaser')
     fireEnemyProjectileAtPlayer(source, player, projectiles)
   }
 
@@ -175,6 +191,11 @@ function startGame() {
     pickups = spawnHealthPickups(2, startCol, startRow)
   }
 
+  function startLevel5() {
+    cpuBoss = spawnCpuBoss(startCol, startRow)
+    pickups = spawnHealthPickups(2, startCol, startRow)
+  }
+
   function clearAllEncounters() {
     resistors = []
     pickups = []
@@ -184,6 +205,7 @@ function startGame() {
     capacitors = []
     leakZones = []
     corruptionBalls = []
+    cpuBoss = []
     romObjective.active = false
   }
 
@@ -196,22 +218,28 @@ function startGame() {
     if (currentLevel === 2) startLevel2()
     if (currentLevel === 3) startLevel3()
     if (currentLevel === 4) startLevel4()
+    if (currentLevel === 5) startLevel5()
   }
 
   function updateHud() {
     const level = LEVELS[currentLevel]
     hud.life.textContent = `${Math.round(player.health)}%`
-    hud.laser.textContent = '43%' // placeholder until the energy system exists
+    hud.laser.textContent = '43%'
     hud.pickups.textContent = pickupStockpile.count
     hud.areaNum.textContent = `Area ${String(currentLevel).padStart(2, '0')}`
     hud.areaName.textContent = level.areaName
     hud.status.textContent = level.status
 
     if (romObjective.active) {
-      hud.romRow.style.display = ''
-      hud.rom.textContent = `${objectiveHealthPercent(romObjective)}%`
+      hud.bossRow.style.display = ''
+      hud.bossLabel.textContent = 'ROM Health'
+      hud.bossValue.textContent = `${objectiveHealthPercent(romObjective)}%`
+    } else if (currentLevel === 5 && cpuBoss.length > 0) {
+      hud.bossRow.style.display = ''
+      hud.bossLabel.textContent = 'CPU Stability'
+      hud.bossValue.textContent = `${cpuBossStabilityPercent(cpuBoss)}%`
     } else {
-      hud.romRow.style.display = 'none'
+      hud.bossRow.style.display = 'none'
     }
   }
 
@@ -279,7 +307,7 @@ function startGame() {
       ctx.fillStyle = '#81f681'
       ctx.font = "40px 'VT323', monospace"
       ctx.textAlign = 'center'
-      ctx.fillText('CORRUPTION CLEARED!', canvas.width / 2, canvas.height / 2)
+      ctx.fillText(winMessage, canvas.width / 2, canvas.height / 2)
       loopRunning = false
       return
     }
@@ -308,13 +336,21 @@ function startGame() {
     }
     updateBusJammerHunt(busJammers, player)
     updateBusJammerAttacks(busJammers, player, projectiles, fireAtPlayerWithSfx)
+    updateCpuBossAttacks(cpuBoss, player, projectiles, fireCpuLaserAtPlayer)
 
     repelFromCapacitors(capacitors, [resistors, logicGates])
     checkHostileCapacitorContact(capacitors, player, damagePlayer)
     updateLeakZones(leakZones, player, damagePlayer)
     updateCorruptionBalls(corruptionBalls, player, damagePlayer)
 
-    const hittables = [...resistors, ...logicGates, ...busJammers, ...leakZones, ...corruptionBalls]
+    const hittables = [
+      ...resistors,
+      ...logicGates,
+      ...busJammers,
+      ...leakZones,
+      ...corruptionBalls,
+      ...cpuBoss,
+    ]
     updateProjectiles(projectiles, hittables, {
       objective: romObjective,
       damageObjectiveFn: damageObjective,
@@ -341,6 +377,8 @@ function startGame() {
     leakZones = leakZones.filter((z) => z.hp > 0)
     corruptionBalls = corruptionBalls.filter((b) => b.hp > 0)
 
+    updateCpuBossStabilise(cpuBoss)
+
     collectPickups(pickups, player, pickupStockpile, () => playSfx('healthPickup'))
     checkGlitchContact(glitchTokens, player, status)
 
@@ -351,13 +389,19 @@ function startGame() {
     if (romObjective.active && romObjective.hp <= 0) {
       gameOver = true
     }
-    
+
     if (player.health <= 0) {
       gameOver = true
     }
-    
+
     if (currentLevel === 4 && corruptionBalls.length === 0) {
       levelWon = true
+      winMessage = 'CORRUPTION CLEARED!'
+    }
+
+    if (currentLevel === 5 && cpuBoss.length === 0) {
+      levelWon = true
+      winMessage = 'CPU STABILISED!'
     }
 
     updateHud()
@@ -368,6 +412,7 @@ function startGame() {
     renderLeakZones(ctx, canvas, leakZones, player.roomCol, player.roomRow)
     renderResistors(ctx, canvas, resistors, player.roomCol, player.roomRow)
     renderCorruptionBalls(ctx, canvas, corruptionBalls, player.roomCol, player.roomRow)
+    renderCpuBoss(ctx, canvas, cpuBoss, player.roomCol, player.roomRow)
     renderLogicGates(ctx, canvas, logicGates, player.roomCol, player.roomRow)
     renderBusJammers(ctx, canvas, busJammers, player.roomCol, player.roomRow)
     renderProjectiles(ctx, canvas, projectiles, player.roomCol, player.roomRow)

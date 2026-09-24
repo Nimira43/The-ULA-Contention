@@ -27,7 +27,7 @@ export const LEVELS = {
   5: {
     areaName: 'The Unhinged CPU',
     status: 'Woof!!! Baa!',
-    chips: [{ label: 'D780C-1', x: 0.5, y: 0.5, colour: 'danger' }],
+    chips: [],
   },
 }
 
@@ -36,3 +36,4 @@ export const HUD_PLACEHOLDER_STATS = {
   laserRegen: '43%',
   healthPickups: 13,
 }
+
