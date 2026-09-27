@@ -4,7 +4,7 @@ const DOOR_GAP = 0.24
 const MARGIN = 20
 const CHIP_COLOURS = { safe: '#03da03', danger: '#ff3b3b' }
 
-export function renderRoom(ctx, canvas, rooms, roomKeyFn, player) {
+export function renderRoom(ctx, canvas, rooms, roomKeyFn, player, wallColour = WALL_COLOUR) {
   const { width, height } = canvas
 
   ctx.fillStyle = '#000'
@@ -14,7 +14,7 @@ export function renderRoom(ctx, canvas, rooms, roomKeyFn, player) {
   const w = width - MARGIN * 2
   const h = height - MARGIN * 2
 
-  ctx.strokeStyle = WALL_COLOUR
+  ctx.strokeStyle = wallColour
   ctx.lineWidth = 4
 
   drawWall(ctx, MARGIN, MARGIN, MARGIN + w, MARGIN, room.doors.N, false)

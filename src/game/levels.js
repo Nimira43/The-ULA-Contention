@@ -29,6 +29,21 @@ export const LEVELS = {
     status: 'Woof!!! Baa!',
     chips: [],
   },
+  6: {
+    areaName: 'The ULA Contention',
+    status: 'Colour Clash!!!',
+    chips: [],
+  },
+  7: {
+    areaName: 'Upper RAM',
+    status: 'Voltage Unstable!',
+    chips: [
+      { label: '4164', x: 0.28, y: 0.2, colour: 'danger' },
+      { label: '4164', x: 0.28, y: 0.34, colour: 'danger' },
+      { label: '4164', x: 0.28, y: 0.48, colour: 'danger' },
+      { label: '4164', x: 0.28, y: 0.62, colour: 'danger' },
+    ],
+  },
 }
 
 export const HUD_PLACEHOLDER_STATS = {
@@ -36,4 +51,3 @@ export const HUD_PLACEHOLDER_STATS = {
   laserRegen: '43%',
   healthPickups: 13,
 }
-

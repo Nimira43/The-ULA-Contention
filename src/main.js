@@ -23,7 +23,7 @@ import {
 import { createObjective, damageObjective, objectiveHealthPercent } from './game/objective.js'
 import { spawnHealthPickups, collectPickups, useHealthPickup, renderPickups } from './game/pickups.js'
 import { spawnGlitchTokens, checkGlitchContact, applyGlitch, renderGlitchTokens } from './game/hazards.js'
-import { spawnLogicGates, updateLogicGates, renderLogicGates } from './game/logicgates.js'
+import { spawnLogicGates, updateLogicGates, renderLogicGates, SPECTRUM_PALETTE } from './game/logicgates.js'
 import {
   spawnBusJammer,
   activateHunt,
@@ -51,12 +51,11 @@ import {
   updateCpuBossAttacks,
   updateCpuBossStabilise,
   cpuBossStabilityPercent,
-  renderCpuBoss
+  renderCpuBoss,
 } from './game/cpuboss.js'
-
 import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
-import { playLoadingScreen } from './game/loadingScreen.js'
+import { playLoadingScreen } from './game/loadingscreen.js'
 import { LEVELS } from './game/levels.js'
 
 const appEl = document.querySelector('#app')
@@ -196,6 +195,25 @@ function startGame() {
     pickups = spawnHealthPickups(2, startCol, startRow)
   }
 
+  function startLevel6() {
+    logicGates = spawnLogicGates(3, startCol, startRow, {
+      kind: 'phantom',
+      chargedDuration: 100,
+      dischargedDuration: 140,
+      burstShots: 2,
+    })
+    capacitors = spawnCapacitors(2, startCol, startRow)
+    pickups = spawnHealthPickups(2, startCol, startRow)
+  }
+
+  function startLevel7() {
+    resistors = spawnRamLeakers(3, startCol, startRow)
+    leakZones = spawnLeakZones(2, startCol, startRow)
+    capacitors = spawnHostileCapacitors(2, startCol, startRow)
+    keepAwayFromCentre(capacitors)
+    pickups = spawnHealthPickups(2, startCol, startRow)
+  }
+
   function clearAllEncounters() {
     resistors = []
     pickups = []
@@ -219,6 +237,8 @@ function startGame() {
     if (currentLevel === 3) startLevel3()
     if (currentLevel === 4) startLevel4()
     if (currentLevel === 5) startLevel5()
+    if (currentLevel === 6) startLevel6()
+    if (currentLevel === 7) startLevel7()
   }
 
   function updateHud() {
@@ -251,7 +271,7 @@ function startGame() {
     ArrowRight: 'right', d: 'right', D: 'right',
   }
 
-  const FIRE_COOLDOWN_FRAMES = 10 // ~6 shots/sec @ 60fps
+  const FIRE_COOLDOWN_FRAMES = 10
   let fireCooldown = 0
 
   function isDoorBlocked(col, row, dir) {
@@ -261,7 +281,7 @@ function startGame() {
   }
 
   window.addEventListener('keydown', (e) => {
-    if (['1', '2', '3', '4', '5'].includes(e.key)) {
+    if (['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
       currentLevel = Number(e.key)
       spawnLevelEnemies()
       updateHud()
@@ -289,6 +309,8 @@ function startGame() {
   updateHud()
 
   let loopRunning = false
+  let frameCount = 0
+  const wallCycleColours = SPECTRUM_PALETTE.filter((c) => c !== '#000000')
 
   function loop() {
     if (gameOver) {
@@ -313,6 +335,7 @@ function startGame() {
     }
 
     const input = applyGlitch(status, rawInput)
+    frameCount += 1
 
     movePlayer(player, input, rooms, roomKey, isDoorBlocked)
 
@@ -385,11 +408,9 @@ function startGame() {
     if (romObjective.active && resistors.length === 0 && currentLevel === 1) {
       romObjective.active = false
     }
-
     if (romObjective.active && romObjective.hp <= 0) {
       gameOver = true
     }
-
     if (player.health <= 0) {
       gameOver = true
     }
@@ -406,7 +427,11 @@ function startGame() {
 
     updateHud()
 
-    renderRoom(ctx, canvas, rooms, roomKey, player)
+    const wallColour =
+      currentLevel === 6
+        ? wallCycleColours[Math.floor(frameCount / 20) % wallCycleColours.length]
+        : undefined
+    renderRoom(ctx, canvas, rooms, roomKey, player, wallColour)
     renderChipProps(ctx, canvas, LEVELS[currentLevel].chips)
     renderCapacitors(ctx, canvas, capacitors, player.roomCol, player.roomRow)
     renderLeakZones(ctx, canvas, leakZones, player.roomCol, player.roomRow)
@@ -424,5 +449,4 @@ function startGame() {
 
   loopRunning = true
   loop()
-
 } 

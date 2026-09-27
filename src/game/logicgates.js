@@ -1,9 +1,12 @@
+const SPECTRUM_PALETTE = ['#000000', '#0000d7', '#d70000', '#d700d7', '#00d700', '#00d7d7', '#d7d700', '#d7d7d7']
+export { SPECTRUM_PALETTE }
+
 const DEFAULTS = {
   kind: 'gate',
-  chargedDuration: 120, 
-  dischargedDuration: 180, 
+  chargedDuration: 120,
+  dischargedDuration: 180,
   burstShots: 3,
-  burstGap: 8, 
+  burstGap: 8,
 }
 
 export function spawnLogicGates(count, roomCol, roomRow, options = {}) {
@@ -76,6 +79,18 @@ export function renderLogicGates(ctx, canvas, gates, roomCol, roomRow) {
       ctx.ellipse(cx, cy, 12, 15, 0, 0, Math.PI * 2)
       ctx.fill()
       ctx.stroke()
+    } else if (g.kind === 'phantom') {
+      if (g.charged) {
+        const idx = Math.floor(g.timer / 6) % SPECTRUM_PALETTE.length
+        ctx.fillStyle = SPECTRUM_PALETTE[idx]
+        ctx.strokeStyle = '#ffffff'
+      } else {
+        ctx.fillStyle = '#333333'
+        ctx.strokeStyle = '#555555'
+      }
+      ctx.lineWidth = 2
+      ctx.fillRect(cx - 12, cy - 12, 24, 24)
+      ctx.strokeRect(cx - 12, cy - 12, 24, 24)
     } else {
       ctx.fillStyle = g.charged ? '#03da03' : '#0a3d0a'
       ctx.strokeStyle = g.charged ? '#81f681' : '#1f5c1f'
