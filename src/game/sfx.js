@@ -2,6 +2,7 @@ const SFX_PATHS = {
   playerLaser: '/sounds/player_laser.wav',
   resistorLaser: '/sounds/resistor_laser.mp3',
   cpuLaser: '/sounds/cpu_laser.wav',
+  ulaLaser: '/sounds/ula_laser.wav',
   healthPickup: '/sounds/health_pickup.wav',
   healthRestored: '/sounds/health_restored.mp3',
 }

@@ -3,6 +3,8 @@ const BAND_HEX = {
   brown: '#7b4a2a',
   red: '#d63b3b',
   orange: '#e08a2a',
+  blue: '#3b7bd6',
+  grey: '#9a9a9a',
 }
 
 const LOW_VALUE_TIERS = [
@@ -13,6 +15,7 @@ const LOW_VALUE_TIERS = [
 ]
 
 const FAST_TIER = { bands: ['brown', 'black', 'brown'], ohms: '100Ω', hp: 1, speed: 0.009 }
+const ELITE_TIER = { bands: ['blue', 'grey', 'red'], ohms: '6.8kΩ', hp: 3, speed: 0.007 }
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
@@ -53,14 +56,22 @@ export function makeSplitChild(parent) {
   })
   child.x = parent.x
   child.y = parent.y
-  child.hp = 1 
+  child.hp = 1
   return child
 }
 
 export function spawnFastResistors(count, roomCol, roomRow) {
   const enemies = []
   for (let i = 0; i < count; i++) {
-    enemies.push(makeResistor(roomCol, roomRow, { tier: FAST_TIER, fast: true }))
+    enemies.push(makeResistor(roomCol, roomRow, { tier: FAST_TIER, fast: true, contactDamage: 8 }))
+  }
+  return enemies
+}
+
+export function spawnEliteResistors(count, roomCol, roomRow) {
+  const enemies = []
+  for (let i = 0; i < count; i++) {
+    enemies.push(makeResistor(roomCol, roomRow, { tier: ELITE_TIER, contactDamage: 6 }))
   }
   return enemies
 }
@@ -83,6 +94,7 @@ function makeResistor(roomCol, roomRow, opts = {}) {
     generation: opts.generation || 0,
     fast: opts.fast || false,
     dashCooldown: opts.fast ? 60 + Math.random() * 60 : undefined,
+    contactDamage: opts.contactDamage || 0,
     contactCooldown: 0,
   }
 }
@@ -135,9 +147,9 @@ export function updateResistorAttacks(enemies, objective, fireEnemyProjectile, p
   }
 }
 
-export function checkFastResistorContact(enemies, player, damagePlayerFn) {
+export function checkResistorContactDamage(enemies, player, damagePlayerFn) {
   for (const e of enemies) {
-    if (!e.fast) continue
+    if (!e.contactDamage) continue
     if (e.roomCol !== player.roomCol || e.roomRow !== player.roomRow) continue
 
     if (e.contactCooldown > 0) {
@@ -145,7 +157,7 @@ export function checkFastResistorContact(enemies, player, damagePlayerFn) {
       continue
     }
     if (Math.hypot(e.x - player.x, e.y - player.y) < 0.05) {
-      damagePlayerFn(player, 8)
+      damagePlayerFn(player, e.contactDamage)
       e.contactCooldown = 60
     }
   }

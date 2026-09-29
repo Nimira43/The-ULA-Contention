@@ -44,6 +44,16 @@ export const LEVELS = {
       { label: '4164', x: 0.28, y: 0.62, colour: 'danger' },
     ],
   },
+  8: {
+    areaName: 'ASTEC PSU Chamber',
+    status: 'Power Failing!!!',
+    chips: [{ label: 'ASTEC PSU', x: 0.5, y: 0.22, colour: 'safe' }],
+  },
+  9: {
+    areaName: 'The Rogue ULA',
+    status: 'SYSTEM CONTENTION!!!',
+    chips: [],
+  },
 }
 
 export const HUD_PLACEHOLDER_STATS = {
