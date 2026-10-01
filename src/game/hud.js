@@ -1,6 +1,7 @@
 import { objectiveHealthPercent } from './objective.js'
 import { cpuBossStabilityPercent } from './cpuboss.js'
 import { ulaBossHealthPercent } from './ulaboss.js'
+import { c5BossHealthPercent } from './c5boss.js'
 
 export function createHudDom(appEl) {
   appEl.innerHTML = `
@@ -17,6 +18,9 @@ export function createHudDom(appEl) {
         </div>
         <div class="hud-row" id="hud-boss-row" style="display:none">
           <span id="hud-boss-label"></span><span id="hud-boss-value"></span>
+        </div>
+        <div class="hud-row" id="hud-lives-row" style="display:none">
+          <span>Lives</span><span id="hud-lives"></span>
         </div>
         <div class="hud-area">
           <div id="hud-area-num"></div>
@@ -36,6 +40,8 @@ export function createHudDom(appEl) {
     bossRow: appEl.querySelector('#hud-boss-row'),
     bossLabel: appEl.querySelector('#hud-boss-label'),
     bossValue: appEl.querySelector('#hud-boss-value'),
+    livesRow: appEl.querySelector('#hud-lives-row'),
+    lives: appEl.querySelector('#hud-lives'),
     areaNum: appEl.querySelector('#hud-area-num'),
     areaName: appEl.querySelector('#hud-area-name'),
     status: appEl.querySelector('#hud-status'),
@@ -46,7 +52,7 @@ export function createHudDom(appEl) {
 
 export function updateHud(hud, state, player, level) {
   hud.life.textContent = `${Math.round(player.health)}%`
-  hud.laser.textContent = '43%'
+  hud.laser.textContent = '43%' // placeholder until the energy system exists
   hud.pickups.textContent = state.pickupStockpile.count
   hud.areaNum.textContent = `Area ${String(state.currentLevel).padStart(2, '0')}`
   hud.areaName.textContent = level.areaName
@@ -68,7 +74,18 @@ export function updateHud(hud, state, player, level) {
     hud.bossRow.style.display = ''
     hud.bossLabel.textContent = 'ULA Integrity'
     hud.bossValue.textContent = `${ulaBossHealthPercent(state.ulaBoss)}%`
+  } else if (state.currentLevel === 10 && state.c5Boss.length > 0) {
+    hud.bossRow.style.display = ''
+    hud.bossLabel.textContent = 'C5 Integrity'
+    hud.bossValue.textContent = `${c5BossHealthPercent(state.c5Boss)}%`
   } else {
     hud.bossRow.style.display = 'none'
+  }
+
+  if (state.currentLevel === 10) {
+    hud.livesRow.style.display = ''
+    hud.lives.textContent = state.lives
+  } else {
+    hud.livesRow.style.display = 'none'
   }
 }

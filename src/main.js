@@ -26,6 +26,7 @@ import { updateLeakZones, renderLeakZones } from './game/leakzones.js'
 import { splitCorruptionBall, updateCorruptionBalls, renderCorruptionBalls } from './game/corruptionballs.js'
 import { updateCpuBossAttacks, updateCpuBossStabilise, renderCpuBoss } from './game/cpuboss.js'
 import { updateUlaBoss, updateUlaBossDestruction, renderUlaBoss } from './game/ulaboss.js'
+import { updateC5BossAttacks, updateC5BossDestruction, renderC5Boss } from './game/c5boss.js'
 import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
 import { playLoadingScreen } from './game/loadingscreen.js'
@@ -38,6 +39,7 @@ import {
   fireAtPlayerWithSfx,
   fireCpuLaserAtPlayer,
   fireUlaLaserAtPlayer,
+  fireC5LaserAtPlayer,
 } from './game/combatSfx.js'
 import { KEY_MAP, createInputState, isDoorBlocked } from './game/input.js'
 
@@ -49,14 +51,16 @@ playLoadingScreen(appEl, music, startGame)
 function startGame() {
   const { canvas, hud } = createHudDom(appEl)
   const ctx = canvas.getContext('2d')
+
   const { rooms, startKey } = generateGrid(5, 4, 9)
   const [startCol, startRow] = startKey.split(',').map(Number)
   const player = createPlayer(startCol, startRow)
+
   const state = createGameState(startCol, startRow)
   const levelCtx = { player, rooms, roomKeyFn: roomKey, startCol, startRow }
-  const rawInput = createInputState()
-  const FIRE_COOLDOWN_FRAMES = 10 
 
+  const rawInput = createInputState()
+  const FIRE_COOLDOWN_FRAMES = 10 // ~6 shots/sec @ 60fps
   let fireCooldown = 0
   let loopRunning = false
   let frameCount = 0
@@ -64,8 +68,8 @@ function startGame() {
   const wallCycleColours = SPECTRUM_PALETTE.filter((c) => c !== '#000000')
 
   window.addEventListener('keydown', (e) => {
-    if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(e.key)) {
-      state.currentLevel = Number(e.key)
+    if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(e.key)) {
+      state.currentLevel = e.key === '0' ? 10 : Number(e.key)
       spawnLevelEnemies(state, levelCtx)
       updateHud(hud, state, player, LEVELS[state.currentLevel])
       if (!loopRunning) {
@@ -143,6 +147,7 @@ function startGame() {
     updateBusJammerAttacks(state.busJammers, player, state.projectiles, fireAtPlayerWithSfx)
     updateCpuBossAttacks(state.cpuBoss, player, state.projectiles, fireCpuLaserAtPlayer)
     updateUlaBoss(state.ulaBoss, player, state.projectiles, fireUlaLaserAtPlayer)
+    updateC5BossAttacks(state.c5Boss, player, state.projectiles, fireC5LaserAtPlayer)
 
     repelFromCapacitors(state.capacitors, [state.resistors, state.logicGates])
     checkHostileCapacitorContact(state.capacitors, player, damagePlayer)
@@ -157,6 +162,7 @@ function startGame() {
       ...state.corruptionBalls,
       ...state.cpuBoss,
       ...state.ulaBoss,
+      ...state.c5Boss,
     ]
     const activeObjective = state.romObjective.active
       ? state.romObjective
@@ -191,37 +197,62 @@ function startGame() {
 
     updateCpuBossStabilise(state.cpuBoss)
     updateUlaBossDestruction(state.ulaBoss)
+    updateC5BossDestruction(state.c5Boss)
     collectPickups(state.pickups, player, state.pickupStockpile, () => playSfx('healthPickup'))
     checkGlitchContact(state.glitchTokens, player, state.status)
 
     if (state.romObjective.active && state.resistors.length === 0 && state.currentLevel === 1) {
       state.romObjective.active = false
     }
+
     if (state.romObjective.active && state.romObjective.hp <= 0) {
       state.gameOver = true
     }
+
     if (state.psuObjective.active && state.resistors.length === 0 && state.currentLevel === 8) {
       state.psuObjective.active = false
       state.levelWon = true
       state.winMessage = 'PSU SECURED!'
     }
+
     if (state.psuObjective.active && state.psuObjective.hp <= 0) {
       state.gameOver = true
     }
+
     if (player.health <= 0) {
-      state.gameOver = true
+      if (state.currentLevel === 10) {
+        state.lives -= 1
+        if (state.lives <= 0) {
+          state.gameOver = true
+        } else {
+          player.health = 100
+          for (const section of state.c5Boss) {
+            if (!section.destroyed) section.hp = section.maxHp
+          }
+        }
+      } else {
+        state.gameOver = true
+      }
     }
+
     if (state.currentLevel === 4 && state.corruptionBalls.length === 0) {
       state.levelWon = true
       state.winMessage = 'CORRUPTION CLEARED!'
     }
+
     if (state.currentLevel === 5 && state.cpuBoss.length === 0) {
       state.levelWon = true
       state.winMessage = 'CPU STABILISED!'
     }
+
     if (state.currentLevel === 9 && state.ulaBoss.length === 0) {
       state.levelWon = true
       state.winMessage = 'ULA DEFEATED!'
+    }
+
+    if (state.currentLevel === 10 && state.c5Boss.length > 0 && state.c5Boss.every((s) => s.hp <= 0)) {
+      state.levelWon = true
+      state.winMessage = 'C5 DESTROYED — YOU WIN!'
     }
 
     updateHud(hud, state, player, LEVELS[state.currentLevel])
@@ -230,6 +261,7 @@ function startGame() {
       state.currentLevel === 6
         ? wallCycleColours[Math.floor(frameCount / 20) % wallCycleColours.length]
         : undefined
+
     renderRoom(ctx, canvas, rooms, roomKey, player, wallColour)
     renderChipProps(ctx, canvas, LEVELS[state.currentLevel].chips)
     renderCapacitors(ctx, canvas, state.capacitors, player.roomCol, player.roomRow)
@@ -238,6 +270,7 @@ function startGame() {
     renderCorruptionBalls(ctx, canvas, state.corruptionBalls, player.roomCol, player.roomRow)
     renderCpuBoss(ctx, canvas, state.cpuBoss, player.roomCol, player.roomRow)
     renderUlaBoss(ctx, canvas, state.ulaBoss, player.roomCol, player.roomRow)
+    renderC5Boss(ctx, canvas, state.c5Boss, player.roomCol, player.roomRow)
     renderLogicGates(ctx, canvas, state.logicGates, player.roomCol, player.roomRow)
     renderBusJammers(ctx, canvas, state.busJammers, player.roomCol, player.roomRow)
     renderProjectiles(ctx, canvas, state.projectiles, player.roomCol, player.roomRow)
@@ -249,4 +282,4 @@ function startGame() {
 
   loopRunning = true
   loop()
-}
+} 

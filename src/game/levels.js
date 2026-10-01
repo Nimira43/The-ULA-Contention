@@ -54,6 +54,11 @@ export const LEVELS = {
     status: 'SYSTEM CONTENTION!!!',
     chips: [],
   },
+  10: {
+    areaName: 'The Sinclair C5',
+    status: 'SPITE OVERLOAD!!!',
+    chips: [],
+  },
 }
 
 export const HUD_PLACEHOLDER_STATS = {

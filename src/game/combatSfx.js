@@ -20,3 +20,8 @@ export function fireUlaLaserAtPlayer(source, player, projectiles) {
   playSfx('ulaLaser')
   fireEnemyProjectileAtPlayer(source, player, projectiles)
 }
+
+export function fireC5LaserAtPlayer(source, player, projectiles) {
+  playSfx('c5BossLaser')
+  fireEnemyProjectileAtPlayer(source, player, projectiles)
+}

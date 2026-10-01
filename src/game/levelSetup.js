@@ -14,6 +14,7 @@ import { spawnLeakZones } from './leakzones.js'
 import { spawnCorruptionBalls } from './corruptionballs.js'
 import { spawnCpuBoss } from './cpuboss.js'
 import { spawnUlaBoss } from './ulaboss.js'
+import { spawnC5Boss } from './c5boss.js'
 
 function keepAwayFromCentre(entities, minDist = 0.22, cx = 0.5, cy = 0.5) {
   for (const e of entities) {
@@ -76,7 +77,6 @@ function startLevel5(state, ctx) {
 
 function startLevel6(state, ctx) {
   const { startCol, startRow } = ctx
-
   state.logicGates = spawnLogicGates(3, startCol, startRow, {
     kind: 'phantom',
     chargedDuration: 100,
@@ -107,8 +107,15 @@ function startLevel8(state, ctx) {
 function startLevel9(state, ctx) {
   const { startCol, startRow } = ctx
   state.ulaBoss = spawnUlaBoss(startCol, startRow)
-  state.resistors = spawnSwarm(2, startCol, startRow) // ULA Echoes — plain grunts, reskinned in fiction
+  state.resistors = spawnSwarm(2, startCol, startRow)
   state.pickups = spawnHealthPickups(3, startCol, startRow)
+}
+
+function startLevel10(state, ctx) {
+  const { startCol, startRow } = ctx
+  state.c5Boss = spawnC5Boss(startCol, startRow)
+  state.pickups = spawnHealthPickups(4, startCol, startRow)
+  state.lives = 3
 }
 
 const LEVEL_STARTERS = {
@@ -121,6 +128,7 @@ const LEVEL_STARTERS = {
   7: startLevel7,
   8: startLevel8,
   9: startLevel9,
+  10: startLevel10,
 }
 
 function clearAllEncounters(state) {
@@ -134,6 +142,7 @@ function clearAllEncounters(state) {
   state.corruptionBalls = []
   state.cpuBoss = []
   state.ulaBoss = []
+  state.c5Boss = []
   state.romObjective.active = false
   state.psuObjective.active = false
 }
