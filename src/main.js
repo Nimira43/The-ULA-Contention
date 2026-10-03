@@ -31,9 +31,12 @@ import { createMusicPlayer } from './game/music.js'
 import { playSfx } from './game/sfx.js'
 import { playLoadingScreen } from './game/loadingscreen.js'
 import { LEVELS } from './game/levels.js'
+import { LEVEL_RULES, FINAL_LEVEL } from './game/levelRules.js'
 import { createGameState } from './game/gameState.js'
 import { spawnLevelEnemies } from './game/levelSetup.js'
 import { createHudDom, updateHud } from './game/hud.js'
+import { canFire, spendShot, regenEnergy, refillEnergy } from './game/energy.js'
+import { drawPhaseScreen } from './game/screens.js'
 import {
   fireEnemyProjectileWithSfx,
   fireAtPlayerWithSfx,
@@ -57,32 +60,59 @@ function startGame() {
   const player = createPlayer(startCol, startRow)
 
   const state = createGameState(startCol, startRow)
+
   const levelCtx = { player, rooms, roomKeyFn: roomKey, startCol, startRow }
 
   const rawInput = createInputState()
   const FIRE_COOLDOWN_FRAMES = 10 // ~6 shots/sec @ 60fps
   let fireCooldown = 0
-  let loopRunning = false
   let frameCount = 0
 
   const wallCycleColours = SPECTRUM_PALETTE.filter((c) => c !== '#000000')
 
+  const refreshHud = () =>
+    updateHud(hud, state, player, LEVELS[state.currentLevel], LEVEL_RULES[state.currentLevel])
+
+  function beginLevel() {
+    spawnLevelEnemies(state, levelCtx)
+    fireCooldown = 0
+    refreshHud()
+  }
+  
+  function enterLevel(level) {
+    state.currentLevel = level
+    state.levelStartStockpile = state.pickupStockpile.count
+    beginLevel()
+  }
+  const advanceLevel = () => enterLevel(state.currentLevel + 1)
+
+  function retryLevel() {
+    state.pickupStockpile.count = state.levelStartStockpile
+    beginLevel()
+  }
+  function restartGame() {
+    state.pickupStockpile.count = 0
+    enterLevel(1)
+  }
+
+  const DEV_LEVEL_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0']
+
   window.addEventListener('keydown', (e) => {
-    if (['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'].includes(e.key)) {
-      state.currentLevel = e.key === '0' ? 10 : Number(e.key)
-      spawnLevelEnemies(state, levelCtx)
-      updateHud(hud, state, player, LEVELS[state.currentLevel])
-      if (!loopRunning) {
-        loopRunning = true
-        loop()
-      }
+    if (e.key === 'Enter' && !e.repeat) {
+      if (state.phase === 'levelComplete') advanceLevel()
+      else if (state.phase === 'gameOver') retryLevel()
+      else if (state.phase === 'victory') restartGame()
+    }
+
+    if (import.meta.env.DEV && DEV_LEVEL_KEYS.includes(e.key)) {
+      enterLevel(e.key === '0' ? 10 : Number(e.key))
     }
 
     const dir = KEY_MAP[e.key]
     if (dir) rawInput[dir] = true
 
     if (e.key === ' ') rawInput.fire = true
-    if (e.key.toLowerCase() === 'h' && !e.repeat) {
+    if (e.key.toLowerCase() === 'h' && !e.repeat && state.phase === 'playing') {
       if (useHealthPickup(state.pickupStockpile, player)) playSfx('healthRestored')
     }
   })
@@ -92,40 +122,28 @@ function startGame() {
     if (e.key === ' ') rawInput.fire = false
   })
 
-  spawnLevelEnemies(state, levelCtx)
-  updateHud(hud, state, player, LEVELS[state.currentLevel])
+  enterLevel(1)
 
   function loop() {
-    if (state.gameOver) {
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = '#ff3b3b'
-      ctx.font = "40px 'VT323', monospace"
-      ctx.textAlign = 'center'
-      ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2)
-      loopRunning = false
-      return
-    }
-    if (state.levelWon) {
-      ctx.fillStyle = '#000'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = '#81f681'
-      ctx.font = "40px 'VT323', monospace"
-      ctx.textAlign = 'center'
-      ctx.fillText(state.winMessage, canvas.width / 2, canvas.height / 2)
-      loopRunning = false
+    frameCount += 1
+
+    if (state.phase !== 'playing') {
+      drawPhaseScreen(ctx, canvas, state, frameCount)
+      requestAnimationFrame(loop)
       return
     }
 
+    const rules = LEVEL_RULES[state.currentLevel]
     const input = applyGlitch(state.status, rawInput)
-    frameCount += 1
 
     movePlayer(player, input, rooms, roomKey, (col, row, dir) =>
       isDoorBlocked(state.busJammers, col, row, dir)
     )
 
+    regenEnergy(state.energy, rules.isBoss)
     fireCooldown -= 1
-    if (rawInput.fire && fireCooldown <= 0) {
+    if (rawInput.fire && fireCooldown <= 0 && canFire(state.energy)) {
+      spendShot(state.energy)
       fireZap(player, state.projectiles)
       playSfx('playerLaser')
       fireCooldown = FIRE_COOLDOWN_FRAMES
@@ -198,70 +216,40 @@ function startGame() {
     updateCpuBossStabilise(state.cpuBoss)
     updateUlaBossDestruction(state.ulaBoss)
     updateC5BossDestruction(state.c5Boss)
+
     collectPickups(state.pickups, player, state.pickupStockpile, () => playSfx('healthPickup'))
     checkGlitchContact(state.glitchTokens, player, state.status)
 
-    if (state.romObjective.active && state.resistors.length === 0 && state.currentLevel === 1) {
-      state.romObjective.active = false
-    }
-
-    if (state.romObjective.active && state.romObjective.hp <= 0) {
-      state.gameOver = true
-    }
-
-    if (state.psuObjective.active && state.resistors.length === 0 && state.currentLevel === 8) {
-      state.psuObjective.active = false
-      state.levelWon = true
-      state.winMessage = 'PSU SECURED!'
-    }
-
-    if (state.psuObjective.active && state.psuObjective.hp <= 0) {
-      state.gameOver = true
-    }
-
+    if (state.romObjective.active && state.romObjective.hp <= 0) state.phase = 'gameOver'
+    if (state.psuObjective.active && state.psuObjective.hp <= 0) state.phase = 'gameOver'
     if (player.health <= 0) {
-      if (state.currentLevel === 10) {
+      if (rules.usesLives) {
         state.lives -= 1
         if (state.lives <= 0) {
-          state.gameOver = true
+          state.phase = 'gameOver'
         } else {
           player.health = 100
+          refillEnergy(state.energy)
           for (const section of state.c5Boss) {
             if (!section.destroyed) section.hp = section.maxHp
           }
         }
       } else {
-        state.gameOver = true
+        state.phase = 'gameOver'
       }
     }
 
-    if (state.currentLevel === 4 && state.corruptionBalls.length === 0) {
-      state.levelWon = true
-      state.winMessage = 'CORRUPTION CLEARED!'
+    if (state.phase === 'playing' && rules.isComplete(state)) {
+      state.winMessage = rules.winMessage
+      state.phase = state.currentLevel >= FINAL_LEVEL ? 'victory' : 'levelComplete'
     }
 
-    if (state.currentLevel === 5 && state.cpuBoss.length === 0) {
-      state.levelWon = true
-      state.winMessage = 'CPU STABILISED!'
-    }
-
-    if (state.currentLevel === 9 && state.ulaBoss.length === 0) {
-      state.levelWon = true
-      state.winMessage = 'ULA DEFEATED!'
-    }
-
-    if (state.currentLevel === 10 && state.c5Boss.length > 0 && state.c5Boss.every((s) => s.hp <= 0)) {
-      state.levelWon = true
-      state.winMessage = 'C5 DESTROYED — YOU WIN!'
-    }
-
-    updateHud(hud, state, player, LEVELS[state.currentLevel])
+    refreshHud()
 
     const wallColour =
       state.currentLevel === 6
         ? wallCycleColours[Math.floor(frameCount / 20) % wallCycleColours.length]
         : undefined
-
     renderRoom(ctx, canvas, rooms, roomKey, player, wallColour)
     renderChipProps(ctx, canvas, LEVELS[state.currentLevel].chips)
     renderCapacitors(ctx, canvas, state.capacitors, player.roomCol, player.roomRow)
@@ -280,6 +268,5 @@ function startGame() {
     requestAnimationFrame(loop)
   }
 
-  loopRunning = true
   loop()
-} 
+}

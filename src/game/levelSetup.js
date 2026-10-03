@@ -15,6 +15,8 @@ import { spawnCorruptionBalls } from './corruptionballs.js'
 import { spawnCpuBoss } from './cpuboss.js'
 import { spawnUlaBoss } from './ulaboss.js'
 import { spawnC5Boss } from './c5boss.js'
+import { resetPlayerForLevel } from './player.js'
+import { refillEnergy } from './energy.js'
 
 function keepAwayFromCentre(entities, minDist = 0.22, cx = 0.5, cy = 0.5) {
   for (const e of entities) {
@@ -77,6 +79,7 @@ function startLevel5(state, ctx) {
 
 function startLevel6(state, ctx) {
   const { startCol, startRow } = ctx
+
   state.logicGates = spawnLogicGates(3, startCol, startRow, {
     kind: 'phantom',
     chargedDuration: 100,
@@ -107,7 +110,7 @@ function startLevel8(state, ctx) {
 function startLevel9(state, ctx) {
   const { startCol, startRow } = ctx
   state.ulaBoss = spawnUlaBoss(startCol, startRow)
-  state.resistors = spawnSwarm(2, startCol, startRow)
+  state.resistors = spawnSwarm(2, startCol, startRow) 
   state.pickups = spawnHealthPickups(3, startCol, startRow)
 }
 
@@ -145,13 +148,16 @@ function clearAllEncounters(state) {
   state.c5Boss = []
   state.romObjective.active = false
   state.psuObjective.active = false
+  state.projectiles = []
+  state.status.glitchTimer = 0
 }
 
 export function spawnLevelEnemies(state, ctx) {
   clearAllEncounters(state)
-  ctx.player.health = 100
-  state.gameOver = false
-  state.levelWon = false
+  resetPlayerForLevel(ctx.player, ctx.startCol, ctx.startRow)
+  refillEnergy(state.energy)
+  state.phase = 'playing'
+  state.winMessage = ''
 
   const starter = LEVEL_STARTERS[state.currentLevel]
   if (starter) starter(state, ctx)

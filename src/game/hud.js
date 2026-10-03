@@ -1,8 +1,3 @@
-import { objectiveHealthPercent } from './objective.js'
-import { cpuBossStabilityPercent } from './cpuboss.js'
-import { ulaBossHealthPercent } from './ulaboss.js'
-import { c5BossHealthPercent } from './c5boss.js'
-
 export function createHudDom(appEl) {
   appEl.innerHTML = `
     <div class="game-frame">
@@ -16,11 +11,16 @@ export function createHudDom(appEl) {
           <div class="hud-row"><span>Laser Regen</span><span id="hud-laser"></span></div>
           <div class="hud-row"><span>Health Pickups</span><span id="hud-pickups"></span></div>
         </div>
-        <div class="hud-row" id="hud-boss-row" style="display:none">
-          <span id="hud-boss-label"></span><span id="hud-boss-value"></span>
-        </div>
-        <div class="hud-row" id="hud-lives-row" style="display:none">
-          <span>Lives</span><span id="hud-lives"></span>
+        <div class="hud-stats" id="hud-level-stats" style="display:none">
+          <div class="hud-row" id="hud-gauge-row" style="display:none">
+            <span id="hud-gauge-label"></span><span id="hud-gauge-value"></span>
+          </div>
+          <div class="hud-row" id="hud-remaining-row" style="display:none">
+            <span id="hud-remaining-label"></span><span id="hud-remaining-value"></span>
+          </div>
+          <div class="hud-row" id="hud-lives-row" style="display:none">
+            <span>Lives</span><span id="hud-lives"></span>
+          </div>
         </div>
         <div class="hud-area">
           <div id="hud-area-num"></div>
@@ -37,9 +37,13 @@ export function createHudDom(appEl) {
     life: appEl.querySelector('#hud-life'),
     laser: appEl.querySelector('#hud-laser'),
     pickups: appEl.querySelector('#hud-pickups'),
-    bossRow: appEl.querySelector('#hud-boss-row'),
-    bossLabel: appEl.querySelector('#hud-boss-label'),
-    bossValue: appEl.querySelector('#hud-boss-value'),
+    levelStats: appEl.querySelector('#hud-level-stats'),
+    gaugeRow: appEl.querySelector('#hud-gauge-row'),
+    gaugeLabel: appEl.querySelector('#hud-gauge-label'),
+    gaugeValue: appEl.querySelector('#hud-gauge-value'),
+    remainingRow: appEl.querySelector('#hud-remaining-row'),
+    remainingLabel: appEl.querySelector('#hud-remaining-label'),
+    remainingValue: appEl.querySelector('#hud-remaining-value'),
     livesRow: appEl.querySelector('#hud-lives-row'),
     lives: appEl.querySelector('#hud-lives'),
     areaNum: appEl.querySelector('#hud-area-num'),
@@ -50,42 +54,34 @@ export function createHudDom(appEl) {
   return { canvas, hud }
 }
 
-export function updateHud(hud, state, player, level) {
+const show = (el, visible) => {
+  el.style.display = visible ? '' : 'none'
+}
+
+export function updateHud(hud, state, player, level, rules) {
   hud.life.textContent = `${Math.round(player.health)}%`
-  hud.laser.textContent = '43%' // placeholder until the energy system exists
+  hud.laser.textContent = `${Math.round(state.energy.value)}%`
   hud.pickups.textContent = state.pickupStockpile.count
   hud.areaNum.textContent = `Area ${String(state.currentLevel).padStart(2, '0')}`
   hud.areaName.textContent = level.areaName
   hud.status.textContent = level.status
 
-  if (state.romObjective.active) {
-    hud.bossRow.style.display = ''
-    hud.bossLabel.textContent = 'ROM Health'
-    hud.bossValue.textContent = `${objectiveHealthPercent(state.romObjective)}%`
-  } else if (state.psuObjective.active) {
-    hud.bossRow.style.display = ''
-    hud.bossLabel.textContent = 'PSU Health'
-    hud.bossValue.textContent = `${objectiveHealthPercent(state.psuObjective)}%`
-  } else if (state.currentLevel === 5 && state.cpuBoss.length > 0) {
-    hud.bossRow.style.display = ''
-    hud.bossLabel.textContent = 'CPU Stability'
-    hud.bossValue.textContent = `${cpuBossStabilityPercent(state.cpuBoss)}%`
-  } else if (state.currentLevel === 9 && state.ulaBoss.length > 0) {
-    hud.bossRow.style.display = ''
-    hud.bossLabel.textContent = 'ULA Integrity'
-    hud.bossValue.textContent = `${ulaBossHealthPercent(state.ulaBoss)}%`
-  } else if (state.currentLevel === 10 && state.c5Boss.length > 0) {
-    hud.bossRow.style.display = ''
-    hud.bossLabel.textContent = 'C5 Integrity'
-    hud.bossValue.textContent = `${c5BossHealthPercent(state.c5Boss)}%`
-  } else {
-    hud.bossRow.style.display = 'none'
+  const gauge = rules.gauge ? rules.gauge(state) : null
+  show(hud.gaugeRow, Boolean(gauge))
+  if (gauge) {
+    hud.gaugeLabel.textContent = gauge.label
+    hud.gaugeValue.textContent = gauge.value
   }
 
-  if (state.currentLevel === 10) {
-    hud.livesRow.style.display = ''
-    hud.lives.textContent = state.lives
-  } else {
-    hud.livesRow.style.display = 'none'
+  const hasRemaining = Boolean(rules.remaining)
+  show(hud.remainingRow, hasRemaining)
+  if (hasRemaining) {
+    hud.remainingLabel.textContent = rules.remainingLabel
+    hud.remainingValue.textContent = rules.remaining(state)
   }
+
+  show(hud.livesRow, Boolean(rules.usesLives))
+  if (rules.usesLives) hud.lives.textContent = state.lives
+
+  show(hud.levelStats, Boolean(gauge) || hasRemaining || Boolean(rules.usesLives))
 }

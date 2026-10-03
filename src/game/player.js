@@ -18,6 +18,16 @@ export function damagePlayer(player, amount) {
   player.health = Math.max(0, player.health - amount)
 }
 
+export function resetPlayerForLevel(player, startCol, startRow) {
+  player.roomCol = startCol
+  player.roomRow = startRow
+  player.x = 0.5
+  player.y = 0.5
+  player.facingX = 0
+  player.facingY = 1
+  player.health = 100
+}
+
 export function movePlayer(player, input, rooms, roomKeyFn, isDoorBlocked) {
   let dx = 0
   let dy = 0
