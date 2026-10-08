@@ -8,9 +8,3 @@ export const KEY_MAP = {
 export function createInputState() {
   return { up: false, down: false, left: false, right: false, fire: false }
 }
-
-export function isDoorBlocked(busJammers, col, row, dir) {
-  return busJammers.some(
-    (j) => j.hp > 0 && j.roomCol === col && j.roomRow === row && j.doorSide === dir
-  )
-}

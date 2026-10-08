@@ -26,8 +26,8 @@ Every enemy is a real ZX Spectrum component that’s having a very bad day.
 
 ## ⚙️ Features (Allegedly)
 
-- **A loading screen with standards.** You must type `LOAD ""` yourself. Using the keyboard.  
-- **Resistor colour codes** determine enemy toughness. Educational *and* petty.  
+- **A loading screen with standards.** You must type `LOAD ""` yourself. No, we will not auto-type it for you. This is a loading screen with *standards*.
+- **Real resistor colour codes** determine how tough your enemies are, because if we're going to be silly, we're going to be silly *accurately*.
 - **A Pang tribute** made entirely of corruption. Shoot the big red circle. Watch it multiply like guilt.  
 - **A boss fight with a CPU** that just wants to be stabilised, not murdered. Therapy optional.  
 - **Eight background tracks** looping forever, because one track is ambience and eight is a lifestyle.  
@@ -70,7 +70,7 @@ This is **authentic Speccy behaviour** and absolutely **not a bug**.
 7. **Upper RAM** — same enemies as level 3, wearing different hats
 8. **ASTEC PSU Chamber** — protect the power supply from a tougher class of resistor that has clearly decided this is personal.
 9. **The Rogue ULA** — the chip this whole game is named after, gone rogue, and only willing to be hurt when it's in the mood. Memory contention, but make it a boss fight.
-10. **The Sinclair C5** — a faithful reproduction sporting five gun turrets, zero mobility, one grudge. You get three lives to face this... this... Oh dear.
+10. **The Sinclair C5** — a faithful reproduction sporting five "gun turrets", zero mobility, one grudge. You get three lives to face this... this... Oh dear.
 
 ---
 

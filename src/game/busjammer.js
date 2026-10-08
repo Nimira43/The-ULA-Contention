@@ -1,4 +1,4 @@
-const DOOR_POSITIONS = {
+const GAP_POSITIONS = {
   N: { x: 0.5, y: 0.08 },
   S: { x: 0.5, y: 0.92 },
   W: { x: 0.08, y: 0.5 },
@@ -10,25 +10,24 @@ const HUNT_STOP_DISTANCE = 0.15
 const ATTACK_COOLDOWN_MIN = 70
 const ATTACK_COOLDOWN_RANGE = 40
 
-export function spawnBusJammer(roomCol, roomRow, doorSide) {
-  const pos = DOOR_POSITIONS[doorSide]
+export function spawnBusJammer(roomCol, roomRow, gapSide = 'N') {
+  const pos = GAP_POSITIONS[gapSide]
   return {
     roomCol,
     roomRow,
-    doorSide,
+    gapSide,
     x: pos.x,
     y: pos.y,
-    hp: 20, 
+    hp: 20,
     bands: ['brown', 'black', 'orange'],
     ohms: '10kΩ',
-    mode: 'blocking',
+    mode: 'blocking', // 'blocking' | 'hunting'
     attackCooldown: 80,
   }
 }
 
 export function activateHunt(jammer) {
   jammer.mode = 'hunting'
-  jammer.doorSide = null 
 }
 
 export function updateBusJammerHunt(jammers, player) {

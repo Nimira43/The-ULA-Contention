@@ -16,22 +16,7 @@ const LOW_VALUE_TIERS = [
 
 const FAST_TIER = { bands: ['brown', 'black', 'brown'], ohms: '100Ω', hp: 1, speed: 0.009 }
 const ELITE_TIER = { bands: ['blue', 'grey', 'red'], ohms: '6.8kΩ', hp: 3, speed: 0.007 }
-
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
-
-export function spawnResistors(rooms, roomKeyFn, count, excludeCol, excludeRow) {
-  const roomList = [...rooms.values()].filter(
-    (r) => !(r.col === excludeCol && r.row === excludeRow)
-  )
-  if (roomList.length === 0) return []
-
-  const enemies = []
-  for (let i = 0; i < count; i++) {
-    const room = roomList[Math.floor(Math.random() * roomList.length)]
-    enemies.push(makeResistor(room.col, room.row))
-  }
-  return enemies
-}
 
 export function spawnSwarm(count, roomCol, roomRow) {
   const enemies = []

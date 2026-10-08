@@ -1,26 +1,25 @@
 const WALL_COLOUR = '#03da03'
 const PLAYER_COLOUR = '#81f681'
-const DOOR_GAP = 0.24
+const GAP_WIDTH = 0.24
 const MARGIN = 20
 const CHIP_COLOURS = { safe: '#03da03', danger: '#ff3b3b' }
 
-export function renderRoom(ctx, canvas, rooms, roomKeyFn, player, wallColour = WALL_COLOUR) {
+export function renderRoom(ctx, canvas, player, wallColour = WALL_COLOUR, gaps = []) {
   const { width, height } = canvas
 
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, width, height)
 
-  const room = rooms.get(roomKeyFn(player.roomCol, player.roomRow))
   const w = width - MARGIN * 2
   const h = height - MARGIN * 2
 
   ctx.strokeStyle = wallColour
   ctx.lineWidth = 4
 
-  drawWall(ctx, MARGIN, MARGIN, MARGIN + w, MARGIN, room.doors.N, false)
-  drawWall(ctx, MARGIN, MARGIN + h, MARGIN + w, MARGIN + h, room.doors.S, false)
-  drawWall(ctx, MARGIN, MARGIN, MARGIN, MARGIN + h, room.doors.W, true)
-  drawWall(ctx, MARGIN + w, MARGIN, MARGIN + w, MARGIN + h, room.doors.E, true)
+  drawWall(ctx, MARGIN, MARGIN, MARGIN + w, MARGIN, gaps.includes('N'), false)
+  drawWall(ctx, MARGIN, MARGIN + h, MARGIN + w, MARGIN + h, gaps.includes('S'), false)
+  drawWall(ctx, MARGIN, MARGIN, MARGIN, MARGIN + h, gaps.includes('W'), true)
+  drawWall(ctx, MARGIN + w, MARGIN, MARGIN + w, MARGIN + h, gaps.includes('E'), true)
 
   const px = MARGIN + player.x * w
   const py = MARGIN + player.y * h
@@ -57,8 +56,8 @@ export function renderChipProps(ctx, canvas, chips) {
   }
 }
 
-function drawWall(ctx, x1, y1, x2, y2, hasDoor, vertical) {
-  if (!hasDoor) {
+function drawWall(ctx, x1, y1, x2, y2, hasGap, vertical) {
+  if (!hasGap) {
     ctx.beginPath()
     ctx.moveTo(x1, y1)
     ctx.lineTo(x2, y2)
@@ -66,8 +65,8 @@ function drawWall(ctx, x1, y1, x2, y2, hasDoor, vertical) {
     return
   }
 
-  const gapStart = 0.5 - DOOR_GAP / 2
-  const gapEnd = 0.5 + DOOR_GAP / 2
+  const gapStart = 0.5 - GAP_WIDTH / 2
+  const gapEnd = 0.5 + GAP_WIDTH / 2
 
   const midStart = vertical
     ? [x1, y1 + (y2 - y1) * gapStart]

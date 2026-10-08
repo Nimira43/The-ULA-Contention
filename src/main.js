@@ -1,5 +1,4 @@
 import './css/styles.css'
-import { generateGrid, roomKey } from './game/grid.js'
 import { createPlayer, movePlayer, damagePlayer } from './game/player.js'
 import { renderRoom, renderChipProps } from './game/render.js'
 import {
@@ -44,7 +43,7 @@ import {
   fireUlaLaserAtPlayer,
   fireC5LaserAtPlayer,
 } from './game/combatSfx.js'
-import { KEY_MAP, createInputState, isDoorBlocked } from './game/input.js'
+import { KEY_MAP, createInputState } from './game/input.js'
 
 const appEl = document.querySelector('#app')
 const music = createMusicPlayer(0.4)
@@ -54,15 +53,11 @@ playLoadingScreen(appEl, music, startGame)
 function startGame() {
   const { canvas, hud } = createHudDom(appEl)
   const ctx = canvas.getContext('2d')
-
-  const { rooms, startKey } = generateGrid(5, 4, 9)
-  const [startCol, startRow] = startKey.split(',').map(Number)
+  const startCol = 0
+  const startRow = 0
   const player = createPlayer(startCol, startRow)
-
   const state = createGameState(startCol, startRow)
-
-  const levelCtx = { player, rooms, roomKeyFn: roomKey, startCol, startRow }
-
+  const levelCtx = { player, startCol, startRow }
   const rawInput = createInputState()
   const FIRE_COOLDOWN_FRAMES = 10 // ~6 shots/sec @ 60fps
   let fireCooldown = 0
@@ -78,7 +73,7 @@ function startGame() {
     fireCooldown = 0
     refreshHud()
   }
-  
+
   function enterLevel(level) {
     state.currentLevel = level
     state.levelStartStockpile = state.pickupStockpile.count
@@ -136,9 +131,7 @@ function startGame() {
     const rules = LEVEL_RULES[state.currentLevel]
     const input = applyGlitch(state.status, rawInput)
 
-    movePlayer(player, input, rooms, roomKey, (col, row, dir) =>
-      isDoorBlocked(state.busJammers, col, row, dir)
-    )
+    movePlayer(player, input)
 
     regenEnergy(state.energy, rules.isBoss)
     fireCooldown -= 1
@@ -216,7 +209,6 @@ function startGame() {
     updateCpuBossStabilise(state.cpuBoss)
     updateUlaBossDestruction(state.ulaBoss)
     updateC5BossDestruction(state.c5Boss)
-
     collectPickups(state.pickups, player, state.pickupStockpile, () => playSfx('healthPickup'))
     checkGlitchContact(state.glitchTokens, player, state.status)
 
@@ -250,7 +242,8 @@ function startGame() {
       state.currentLevel === 6
         ? wallCycleColours[Math.floor(frameCount / 20) % wallCycleColours.length]
         : undefined
-    renderRoom(ctx, canvas, rooms, roomKey, player, wallColour)
+    const wallGaps = state.busJammers.filter((j) => j.hp > 0).map((j) => j.gapSide)
+    renderRoom(ctx, canvas, player, wallColour, wallGaps)
     renderChipProps(ctx, canvas, LEVELS[state.currentLevel].chips)
     renderCapacitors(ctx, canvas, state.capacitors, player.roomCol, player.roomRow)
     renderLeakZones(ctx, canvas, state.leakZones, player.roomCol, player.roomRow)
@@ -269,4 +262,4 @@ function startGame() {
   }
 
   loop()
-}
+} 

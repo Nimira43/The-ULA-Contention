@@ -38,18 +38,14 @@ function startLevel1Fight(state, ctx) {
 }
 
 function startLevel2(state, ctx) {
-  const { startCol, startRow, rooms, roomKeyFn } = ctx
+  const { startCol, startRow } = ctx
   state.logicGates = spawnLogicGates(3, startCol, startRow)
   state.capacitors = spawnCapacitors(2, startCol, startRow)
-
-  const startRoom = rooms.get(roomKeyFn(startCol, startRow))
-  const doorSide = Object.keys(startRoom.doors).find((d) => startRoom.doors[d])
-  state.busJammers = doorSide ? [spawnBusJammer(startCol, startRow, doorSide)] : []
+  state.busJammers = [spawnBusJammer(startCol, startRow, 'N')]
 }
 
 function startLevel3(state, ctx) {
   const { startCol, startRow } = ctx
-
   state.logicGates = spawnLogicGates(2, startCol, startRow, {
     kind: 'wraith',
     chargedDuration: 90,
@@ -79,7 +75,6 @@ function startLevel5(state, ctx) {
 
 function startLevel6(state, ctx) {
   const { startCol, startRow } = ctx
-
   state.logicGates = spawnLogicGates(3, startCol, startRow, {
     kind: 'phantom',
     chargedDuration: 100,
@@ -110,7 +105,7 @@ function startLevel8(state, ctx) {
 function startLevel9(state, ctx) {
   const { startCol, startRow } = ctx
   state.ulaBoss = spawnUlaBoss(startCol, startRow)
-  state.resistors = spawnSwarm(2, startCol, startRow) 
+  state.resistors = spawnSwarm(2, startCol, startRow)
   state.pickups = spawnHealthPickups(3, startCol, startRow)
 }
 
