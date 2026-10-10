@@ -65,12 +65,12 @@ This is **authentic Speccy behaviour** and absolutely **not a bug**.
 2. **Address Bus** — logic gates that only feel vulnerable when they’re in the mood.  
 3. **Status Register** — RAM chips that split when emotionally wounded; Flag Wraiths haunt your syntax.  
 4. **Intrusion** — three corruption circles, Pang rules, existential dread.  
-5. **The Unhinged CPU** — a boss fight. It gets faster and angrier the more of it you destroy, which feels rude but is technically motivating.
-6. **The ULA Contention** — the level that shares the game's name, so it colour-cycles the walls here just to earn it.
+5. **The Unhinged CPU** — a boss fight. It gets faster and angrier the more of it you destroy.
+6. **The ULA Contention** — the level that shares the game's name, so it colour-cycles the walls here just to show off.
 7. **Upper RAM** — same enemies as level 3, wearing different hats
 8. **ASTEC PSU Chamber** — protect the power supply from a tougher class of resistor that has clearly decided this is personal.
-9. **The Rogue ULA** — the chip this whole game is named after, gone rogue, and only willing to be hurt when it's in the mood. Memory contention, but make it a boss fight.
-10. **The Sinclair C5** — a faithful reproduction sporting five "gun turrets", zero mobility, one grudge. You get three lives to face this... this... Oh dear.
+9. **The Rogue ULA** — the chip this whole game is named after, gone rogue, and only willing to be hurt when it's in the mood for a fight.
+10. **The Sinclair C5** — a faithful reproduction sporting five gun turrets, zero mobility, one grudge. You get three lives to face this... this... legend. Oh dear.
 
 ---
 

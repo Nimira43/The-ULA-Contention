@@ -14,7 +14,7 @@ const LOW_VALUE_TIERS = [
   { bands: ['orange', 'orange', 'brown'], ohms: '330Ω', hp: 2, speed: 0.009 },
 ]
 
-const FAST_TIER = { bands: ['brown', 'black', 'brown'], ohms: '100Ω', hp: 1, speed: 0.009 }
+const FAST_TIER = { bands: ['brown', 'black', 'brown'], ohms: '100Ω', hp: 1, speed: 0.0065 }
 const ELITE_TIER = { bands: ['blue', 'grey', 'red'], ohms: '6.8kΩ', hp: 3, speed: 0.007 }
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 

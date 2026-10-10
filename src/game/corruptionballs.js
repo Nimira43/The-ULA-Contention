@@ -1,7 +1,7 @@
 const TIERS = [
-  { radius: 0.09, speed: 0.011, damage: 6 },
-  { radius: 0.06, speed: 0.014, damage: 4 },
-  { radius: 0.035, speed: 0.017, damage: 3 },
+  { radius: 0.09, speed: 0.0065, damage: 6 },
+  { radius: 0.06, speed: 0.0085, damage: 4 },
+  { radius: 0.035, speed: 0.0105, damage: 3 },
 ]
 
 const CONTACT_COOLDOWN_FRAMES = 30
@@ -18,7 +18,7 @@ function makeBall(roomCol, roomRow, x, y, tierIndex, angle) {
     tierIndex,
     radius: tier.radius,
     damage: tier.damage,
-    hp: 1, // any zap hit triggers a split (or destruction at the smallest tier)
+    hp: 1,
     contactTimer: 0,
   }
 }
@@ -27,8 +27,11 @@ export function spawnCorruptionBalls(count, roomCol, roomRow) {
   const balls = []
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2
-    const x = 0.25 + Math.random() * 0.5
-    const y = 0.25 + Math.random() * 0.5
+    let x, y
+    do {
+      x = 0.2 + Math.random() * 0.6
+      y = 0.2 + Math.random() * 0.6
+    } while (Math.hypot(x - 0.5, y - 0.5) < TIERS[0].radius + 0.15)
     balls.push(makeBall(roomCol, roomRow, x, y, 0, angle))
   }
   return balls
